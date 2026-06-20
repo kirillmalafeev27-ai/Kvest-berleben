@@ -14,6 +14,10 @@ class Content:
         self.verbs_raw = self._load("verbs.yaml")
         self.locations_raw = self._load("locations.yaml")
         self.npcs_raw = self._load("npcs.yaml")
+        self.wildcards_raw = self._load("wildcards.yaml")
+        self.wildcards: dict = self.wildcards_raw.get("wildcards", {})
+        self.wild_defaults: dict = self.wildcards_raw.get("defaults", {})
+        self.wild_free: dict = self.wildcards_raw.get("free_roam", {})
 
         self.verbs: dict = self.verbs_raw.get("verbs", {})
         self.honesty_kw: dict = self.verbs_raw.get("honesty", {})

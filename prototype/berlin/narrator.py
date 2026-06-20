@@ -39,6 +39,24 @@ class Narrator:
                 pass
         return text
 
+    def steer(self, ev: dict, intent: dict, base_text: str, hint: str, npc_id: str | None) -> str:
+        """Внутримировая реакция на действие ВНЕ сценарных веток + мягкий возврат к сюжету.
+        Stub: готовый base_text + hint. Claude: живая дефлексия по фактам сцены."""
+        if not self.llm.available:
+            return f"{base_text}\n{hint}".strip()
+        npc = self.c.npc(npc_id) if npc_id else {}
+        user = (
+            f"ФАКТЫ СЦЕНЫ: {ev.get('facts')}\n"
+            f"ИГРОК ПОПЫТАЛСЯ (вне доступных опций): verb={intent.get('verb')}, "
+            f"текст='{intent.get('raw','')}'\n"
+            f"СТИЛЬ NPC: {npc.get('name','')} — {npc.get('register','')}\n"
+            f"ДОСТУПНЫЕ ПО СУТИ ХОДЫ: {hint}\n"
+            "Опиши в 1–3 предложениях, как мир/NPC внутри сюжета реагирует на эту выходку "
+            "(не выходя за факты, не выдавая предметов/обещаний), и МЯГКО верни игрока к реальному "
+            "выбору сцены. Не ломай погружение, не пиши меню."
+        )
+        return self.llm.complete(NARRATOR_SYSTEM, user, temperature=0.7, max_tokens=220).strip()
+
     def reflection(self, axes: dict) -> str | None:
         """Редкое текстовое «отражение» характера (оси числами не показываем)."""
         if axes.get("T", 0) <= -40:

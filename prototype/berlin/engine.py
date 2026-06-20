@@ -59,9 +59,12 @@ class Engine:
     def current_scene(self, st: GameState) -> dict | None:
         if st.active_event:
             ev = self.c.events.get(st.active_event)
-            if ev and self.rules.eval_conditions(st, ev.get("entry")):
+            loc = ev.get("location") if ev else None
+            loc_ok = (not loc or loc in ("any", None) or loc == st.location
+                      or self.rules._loc_ok_by_entry(st, ev))
+            if ev and loc_ok and self.rules.eval_conditions(st, ev.get("entry")):
                 return ev
-            st.active_event = None
+            st.active_event = None   # ушёл из локации/условия отпали — сцена не «следует» за игроком
         # сначала — отложенные followups, если они уже проходят по условиям
         for fid in list(st.pending):
             ev = self.c.events.get(fid)
@@ -123,13 +126,7 @@ class Engine:
     def _resolve(self, st: GameState, ev: dict, intent: dict) -> StepResult:
         br = self.rules.match_branch(ev, intent, st)
         if br is None:
-            fb = ev.get("fallback", {})
-            if fb.get("reopen", True):
-                st.active_event = ev["id"]
-            return StepResult(
-                narration=fb.get("text", "Так не выйдет."),
-                event_id=ev["id"], intent=intent,
-            )
+            return self._steer(st, ev, intent)   # мир откликается на что угодно и ведёт обратно
 
         seed_key = f"{st.seed}:{st.turn}:{ev['id']}:{br['id']}"
         rng = random.Random(seed_key)
@@ -167,29 +164,123 @@ class Engine:
     # ---------- вольные действия / навигация ----------
     def _free_action(self, st: GameState, intent: dict) -> StepResult:
         v = intent["verb"]
-        if v == "rest":
-            self._advance_day(st)
-            return StepResult(narration="Ты переводишь дух. Наступает новый день.",
-                              day_advanced=True, intent=intent)
-        if v == "observe":
-            loc = self.c.loc_name(st.location)
-            nb = ", ".join(self.c.loc_name(x) for x in self.c.loc_connects(st.location)) or "—"
-            return StepResult(narration=f"Ты в локации: {loc}. Отсюда можно пройти: {nb}.", intent=intent)
-        if v == "inspect_self":
-            return StepResult(
-                narration=(f"{st.name} ({st.line}), день {st.day}. Деньги: €{st.money}. "
-                           f"{st.clock_label}: {st.visa_days}. "
-                           f"Голод {st.hunger}, усталость {st.fatigue}, стресс {st.stress}."),
-                intent=intent)
-        if v == "move":
-            dest = self._detect_dest(intent)
-            if dest:
-                fare_dodge = intent.get("method") == "transit_fare_dodge"
-                return self.travel(st, dest, fare_dodge)
-            return StepResult(narration="Куда именно? Назови место (или используй /goto).", intent=intent)
-        return StepResult(narration="Сейчас тут ничего особенного не происходит. "
-                                    "Попробуй осмотреться, перейти куда-то или отдохнуть (конец дня).",
-                          intent=intent)
+        raw_unknown = (v == "observe" and intent.get("confidence", 1.0) < 0.4)
+        if not raw_unknown:
+            if v == "rest":
+                self._advance_day(st)
+                return StepResult(narration="Ты переводишь дух. Наступает новый день.",
+                                  day_advanced=True, intent=intent)
+            if v == "observe":
+                loc = self.c.loc_name(st.location)
+                nb = ", ".join(self.c.loc_name(x) for x in self.c.loc_connects(st.location)) or "—"
+                return StepResult(narration=f"Ты в локации: {loc}. Отсюда можно пройти: {nb}.", intent=intent)
+            if v == "inspect_self":
+                return StepResult(
+                    narration=(f"{st.name} ({st.line}), день {st.day}. Деньги: €{st.money}. "
+                               f"{st.clock_label}: {st.visa_days}. "
+                               f"Голод {st.hunger}, усталость {st.fatigue}, стресс {st.stress}."),
+                    intent=intent)
+            if v == "move":
+                dest = self._detect_dest(intent)
+                if dest:
+                    fare_dodge = intent.get("method") == "transit_fare_dodge"
+                    return self.travel(st, dest, fare_dodge)
+                return StepResult(narration="Куда именно? Назови место (или используй /goto).", intent=intent)
+        # дикие/неожиданные/непонятные действия в вольном режиме — мир всё равно живой
+        fw = self.c.wild_free.get(v) or (self.c.wild_free.get("unknown") if raw_unknown else None)
+        if fw:
+            place = self.c.loc_name(st.location)
+            changes = self.rules.apply_effects(st, {}, fw.get("effects", {}), self.c.economy)
+            deltas = self.analyst.apply(st, intent, {"deltas": fw.get("deltas", {})}, "low")
+            text = self._fmt(fw.get("default", "..."), "прохожий", place, "")
+            return StepResult(narration=text, changes=changes, deltas=deltas,
+                              reflection=self.narrator.reflection(st.axes), intent=intent)
+        steer = self.c.wild_free.get("default_steer", "Осмотрись, перейди куда-то или передохни.")
+        return StepResult(narration="Сейчас тут ничего особенного не происходит. " + steer, intent=intent)
+
+    # ---------- «мир откликается на что угодно» (steering к сюжету) ----------
+    VERB_HINT = {
+        "talk": "поговорить", "persuade": "убедить", "deceive": "схитрить", "threaten": "надавить",
+        "bribe": "предложить денег", "beg": "попросить", "befriend": "расположить к себе",
+        "ask_help": "попросить помощи", "offer_help": "помочь", "flirt": "сблизиться",
+        "apologize": "извиниться", "refuse": "отказаться", "trade": "договориться о деньгах",
+        "work": "взяться за работу", "steal": "рискнуть и взять своё", "borrow": "занять",
+        "give": "отдать/заплатить", "apply": "оформить", "submit_docs": "показать документы",
+        "book_appointment": "искать запись", "inquire_status": "расспросить", "move": "уйти",
+        "search": "осмотреться", "flee": "уйти", "hide": "затаиться",
+    }
+
+    def _scene_hint(self, ev: dict | None) -> str:
+        if not ev:
+            return "Осмотрись, перейди куда-то или передохни."
+        seen: list[str] = []
+        for br in ev.get("branches", []):
+            for v in br.get("match", {}).get("verbs", []):
+                h = self.VERB_HINT.get(v)
+                if h and h not in seen:
+                    seen.append(h)
+        if not seen:
+            return "Реши, как поступить."
+        return "Сейчас уместнее: " + ", ".join(seen[:5]) + "."
+
+    def _npc_name(self, ev: dict | None) -> str:
+        tid = (ev.get("targets") or [None])[0] if ev else None
+        return self.c.npc(tid).get("name", "собеседник") if tid else "собеседник"
+
+    def _loc_groups_of(self, loc: str) -> list[str]:
+        return [g for g, members in self.c.loc_groups.items() if loc in members]
+
+    def _pick_loc_text(self, wc: dict, st: GameState) -> str | None:
+        byloc = wc.get("by_location", {})
+        for g in self._loc_groups_of(st.location):
+            if g in byloc:
+                return byloc[g]
+        return wc.get("default")
+
+    def _fmt(self, s: str, npc: str, place: str, hint: str) -> str:
+        try:
+            return s.format(npc=npc, place=place, hint=hint).strip()
+        except Exception:
+            return s
+
+    def _steer(self, st: GameState, ev: dict, intent: dict) -> StepResult:
+        verb = intent.get("verb", "")
+        if verb == "observe" and intent.get("confidence", 1.0) < 0.4:
+            verb = "unknown"
+        wc = self.c.wildcards.get(verb)
+        hint = self._scene_hint(ev)
+        npc = self._npc_name(ev)
+        place = self.c.loc_name(st.location)
+
+        base = self._pick_loc_text(wc, st) if wc else None
+        if base is None:
+            base = ev.get("fallback", {}).get("text")          # своя реплика сцены, если есть
+        if base is None:
+            base = (self.c.wildcards.get("unknown", {}) or {}).get("default") \
+                   or self.c.wild_defaults.get("unknown_reaction", "...")
+        steer_tpl = (wc or {}).get("steer") or self.c.wild_defaults.get("steer", "{hint}")
+        text = self._fmt(base, npc, place, hint)
+        steer = self._fmt(steer_tpl, npc, place, hint)
+        narration = text + (("\n" + steer) if steer and steer not in text else "")
+
+        changes, deltas = [], {}
+        if wc:
+            changes = self.rules.apply_effects(st, ev, wc.get("effects", {}), self.c.economy)
+            deltas = self.analyst.apply(st, intent, {"deltas": wc.get("deltas", {})}, ev.get("stakes", "low"))
+            for fid in wc.get("followups", []):
+                if fid not in st.pending:
+                    st.pending.append(fid)
+
+        st.active_event = ev["id"]   # сцена остаётся открытой — ждём настоящего решения
+        if self.llm.available:
+            try:
+                narration = self.narrator.steer(ev, intent, base, hint, (ev.get("targets") or [None])[0])
+            except Exception:
+                pass
+        return StepResult(narration=narration, changes=changes, deltas=deltas,
+                          reflection=self.narrator.reflection(st.axes),
+                          leads_to="(мир откликнулся; сцена ждёт твоего решения)",
+                          event_id=ev["id"], branch_id="_steer", intent=intent)
 
     def _detect_dest(self, intent: dict) -> str | None:
         raw = intent.get("raw", "").lower()
