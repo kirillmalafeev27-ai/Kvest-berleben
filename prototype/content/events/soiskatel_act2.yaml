@@ -1,0 +1,389 @@
+# События линии «Соискатель», Акт II (дни 15–60). Продолжают Акт I по флагам/счётчикам.
+# Перенос сцен из design/story/03_akt2_sceny.md в схему движка.
+
+events:
+
+# ---------- N6: облава Zoll ----------
+- id: node_zoll_raid
+  title: "Облава"
+  category: pressure
+  act: 2
+  node: N6
+  priority: 82
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_bogdan}, {counter_gte: {bogdan_shifts: 5}} ] }
+  stakes: high
+  location: baustelle
+  targets: [npc_bogdan]
+  facts:
+    - "На стройку въезжают машины Zoll (финконтроль). Проверка работающих вчёрную."
+    - "Бежать, прятаться, предъявить документы — или сдаться."
+  intro: "Крик с края площадки: «Zoll! Облава!» Все бросают инструмент."
+  branches:
+    - id: flee
+      match: { verbs: [flee, move] }
+      skill_check: { skill: ulitsa, vs: 45 }
+      outcomes:
+        - on: success
+          text: "Ты перемахиваешь через ограждение и растворяешься в дворах. Сердце колотится."
+          effects: { set_flags: [escaped_zoll], stress: 18 }
+          deltas: { L: -1, G: 1 }
+          skill_xp: { ulitsa: 4, hladnokrovie: 3 }
+          leads_to: "ушёл, но стройка теперь под наблюдением"
+        - on: fail
+          text: "Тебя перехватывают у выхода. Данные переписаны. Это попадёт в твоё дело."
+          effects: { set_flags: [zoll_caught], stress: 25, dossier: "задержан при работе вчёрную (Zoll)" }
+          deltas: { L: -2 }
+          leads_to: "запись в деле → давит на N9"
+    - id: hide
+      match: { verbs: [hide] }
+      skill_check: { skill: hladnokrovie, vs: 40 }
+      outcomes:
+        - on: success
+          text: "Ты замираешь за поддонами, пока шаги не стихнут. Пронесло."
+          effects: { set_flags: [escaped_zoll], stress: 15 }
+          deltas: { L: -1 }
+          skill_xp: { hladnokrovie: 4 }
+        - on: fail
+          text: "Тебя находят. Документы, вопросы, запись."
+          effects: { set_flags: [zoll_caught], stress: 22, dossier: "задержан при работе вчёрную (Zoll)" }
+          deltas: { L: -2 }
+    - id: show_fake
+      match: { verbs: [submit_docs], methods: [forged] }
+      requires: [ {flag: has_fake_anmeldung} ]
+      skill_check: { skill: hladnokrovie, vs: 60 }
+      outcomes:
+        - on: success
+          text: "Ты протягиваешь фейк-Anmeldung «Доктора». Офицер хмурится, но возвращает. Холодный пот."
+          effects: { stress: 20 }
+          deltas: { L: -1, T: -1 }
+          leads_to: "фейк выдержал — пока"
+        - on: fail
+          text: "Офицер всматривается дольше обычного. «Das ist nicht echt.» Фейк раскрыт — это уже не штраф."
+          effects: { set_flags: [caught_with_fake], stress: 35, dossier: "ПОДДЕЛЬНЫЙ ДОКУМЕНТ при облаве" }
+          deltas: { L: -8, T: -3 }
+          leads_to: "катастрофа: прямой путь к ⑤ на N9"
+    - id: surrender
+      match: { verbs: [refuse, talk, observe], tone: [submissive, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты не бежишь. Тебя переписывают и отпускают — пока. Но имя уже в системе."
+          effects: { set_flags: [zoll_caught], dossier: "выявлен при работе вчёрную (Zoll)" }
+          deltas: { L: -1, P: 1 }
+  fallback: { text: "Офицер Zoll уже идёт в твою сторону. Решай быстро.", reopen: true }
+
+# ---------- Доверие Мехмета → ужин общины ----------
+- id: ev_community_dinner
+  title: "Ужин общины"
+  category: community
+  act: 2
+  priority: 60
+  once: true
+  trigger: chain
+  cooldown_days: 14
+  entry: { all: [ {flag: works_mehmet}, {faction_gte: {turkish: 12}} ] }
+  stakes: low
+  location: mehmet_kebab
+  targets: [npc_mehmet]
+  facts:
+    - "Мехмет зовёт на семейный ужин в задней комнате кебабной."
+    - "За столом — родня и Хасан, у которого сдаётся комната без формальностей."
+  intro: "МЕХМЕТ: «Приходи. Поужинаем по-человечески. Не как хозяин и мойщик — как люди.»"
+  branches:
+    - id: warm
+      match: { verbs: [talk, offer_help, befriend], tone: [polite, neutral, charming] }
+      outcomes:
+        - on: always
+          text: "Тёплый вечер, чай, разговоры. Хасан кивает: комната найдётся. «Свой человек», — роняет Мехмет."
+          effects: { faction: {turkish: 8}, set_flags: [room_offer_community], rumor: {tag: "свой человек", faction: turkish, intensity: 0.6} }
+          deltas: { A: 1, G: -1 }
+          leads_to: "комната без Anmeldung → ступень жилья вверх"
+    - id: transactional
+      match: { verbs: [persuade, bribe, trade] }
+      outcomes:
+        - on: always
+          text: "Ты сразу про дело и комнату. За столом холодеют: так здесь не принято."
+          effects: { faction: {turkish: 2} }
+          deltas: { A: -1, T: -1 }
+          leads_to: "доверие общины подморожено"
+  fallback: { text: "За столом ждут, пока ты заговоришь по-человечески.", reopen: true }
+
+# ---------- Урок немецкого у Лены ----------
+- id: ev_lena_class
+  title: "Вторник, шесть вечера"
+  category: arc
+  act: 2
+  priority: 42
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 2
+  entry: { all: [ {flag: knows_lena} ] }
+  stakes: trivial
+  location: street_neukoelln
+  targets: [npc_lena]
+  facts:
+    - "Бесплатный урок немецкого от НКО. Скучно, медленно — и работает."
+  intro: "ЛЕНА: «Чем лучше язык, тем больше дверей. Это не я придумала.»"
+  branches:
+    - id: study
+      match: { verbs: [talk, work, observe, apply] }
+      outcomes:
+        - on: always
+          text: "Ты сидишь над спряжениями. Немецкий понемногу прирастает."
+          effects: { skill_xp: {deutsch: 8}, fatigue: 6 }
+          deltas: { L: 1 }
+          leads_to: "к Deutsch>50 откроется «немецкий Берлин»"
+  fallback: { text: "Лена раскрывает учебник.", reopen: true }
+
+# ---------- Беккер «узнаёт лицо» ----------
+- id: ev_becker_recognizes
+  title: "Она узнаёт лицо"
+  category: arc
+  act: 2
+  priority: 58
+  once: true
+  trigger: scheduled
+  day: 18
+  entry: { all: [ {flag: becker_honest} ] }
+  stakes: medium
+  location: buergeramt
+  targets: [npc_frau_becker]
+  facts:
+    - "Ты снова в Bürgeramt. Фрау Беккер поднимает взгляд — и узнаёт тебя."
+  intro: "ФРАУ БЕККЕР: «Вы уже не первый раз. Я вас запомнила.»"
+  branches:
+    - id: honest_again
+      match: { verbs: [talk, inquire_status, apply], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Она оглядывается и тихо: «Если зайти на сайт в семь утра — иногда отменяют. Только это я вам не говорила.»"
+          effects: { set_flags: [knows_appt_lifehack] }
+          deltas: { T: 1, L: 1 }
+          leads_to: "честный обход очереди → реальный термин Anmeldung"
+  fallback: { text: "Беккер ждёт, держа руку на клавиатуре.", reopen: true }
+
+# ---------- Эмилия: визиты → N5 ----------
+- id: ev_emilia_visit
+  title: "Ещё латте"
+  category: ambient
+  act: 2
+  priority: 35
+  trigger: pool
+  weight: 1.2
+  cooldown_days: 1
+  entry: { all: [ {flag: knows_emilia} ], none: [ {flag: emilia_asked} ] }
+  stakes: trivial
+  location: cafe_third_wave
+  targets: [npc_emilia]
+  facts:
+    - "Эмилия за стойкой узнаёт тебя и улыбается."
+  intro: "ЭМИЛИЯ: «О, снова ты. Тот же латте?»"
+  branches:
+    - id: chat
+      match: { verbs: [talk, flirt, befriend] }
+      outcomes:
+        - on: always
+          text: "Лёгкий разговор ни о чём — и о чём-то. Между вами теплеет."
+          effects: { inc: {emilia_meetings: 1}, stress: -6 }
+          leads_to: "после 3 встреч — Эмилия спросит прямо (N5)"
+  fallback: { text: "Эмилия ждёт у кофемашины.", reopen: true }
+
+- id: node_emilia_asks
+  title: "А по-честному?"
+  category: dilemma
+  act: 2
+  node: N5
+  priority: 64
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_emilia}, {counter_gte: {emilia_meetings: 3}} ] }
+  stakes: low
+  location: cafe_third_wave
+  targets: [npc_emilia]
+  facts:
+    - "Эмилия садится напротив в перерыв. «Чем ты тут занимаешься? Только по-честному.»"
+  intro: "ЭМИЛИЯ: «Я вру плохо и чужое враньё чую.»"
+  branches:
+    - id: truth
+      match: { verbs: [talk, apologize], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Мою посуду. Хотя дома был инженером.» — «Honest. Это сейчас редкость», — теплеет она по-настоящему."
+          effects: { set_flags: [emilia_asked, emilia_trust], faction: {germans: 5} }
+          deltas: { T: 2 }
+          leads_to: "ветка любви настоящая (Акт III)"
+    - id: lie
+      match: { verbs: [deceive, persuade], honesty: [lie] }
+      outcomes:
+        - on: always
+          text: "«Да так, в IT, проекты, удалёнка...» Она улыбается, но что-то отметила про себя."
+          effects: { set_flags: [emilia_asked, lied_to_emilia] }
+          deltas: { T: -2 }
+          leads_to: "всплывёт у стройки → разрыв"
+          followups: [ev_emilia_reveal]
+    - id: dodge
+      match: { verbs: [refuse], tone: [submissive, neutral, cold] }
+      outcomes:
+        - on: always
+          text: "Ты уходишь от ответа. Эмилия чуть отстраняется: «Ладно. Не моё дело.»"
+          effects: { set_flags: [emilia_asked] }
+          deltas: { P: -1 }
+          leads_to: "дистанция; ветка любви буксует"
+  fallback: { text: "Эмилия смотрит прямо и ждёт ответа.", reopen: true }
+
+- id: ev_emilia_reveal
+  title: "Я видела тебя на стройке"
+  category: arc
+  act: 2
+  priority: 56
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: lied_to_emilia} ] }
+  stakes: medium
+  location: street_neukoelln
+  targets: [npc_emilia]
+  facts:
+    - "Эмилия сталкивается с тобой у стройки — в робе, с тачкой."
+  intro: "ЭМИЛИЯ: «Я видела тебя на стройке. Дело не в стройке. Дело в том, что ты соврал. Мне. В лицо.»"
+  branches:
+    - id: apologize
+      match: { verbs: [apologize, talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты честно извиняешься. Она кивает, но холодно: «Поздно. Но спасибо, что хоть сейчас не врёшь.» Уходит."
+          effects: { set_flags: [emilia_broke_up] }
+          deltas: { T: 1 }
+          leads_to: "брак-по-любви закрыт; возможен только холодный расчёт"
+    - id: double_down
+      match: { verbs: [deceive, persuade], honesty: [lie] }
+      outcomes:
+        - on: always
+          text: "Ты пытаешься выкрутиться новой ложью. Эмилия просто разворачивается и уходит."
+          effects: { set_flags: [emilia_broke_up] }
+          deltas: { T: -3 }
+          leads_to: "ветка Эмилии полностью закрыта"
+  fallback: { text: "Эмилия ждёт хоть одного честного слова.", reopen: true }
+
+# ---------- Долг Виктору ----------
+- id: ev_victor_debt
+  title: "По-соседски"
+  category: arc
+  act: 2
+  priority: 57
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: owes_victor} ] }
+  stakes: medium
+  location: bar_sandmann
+  targets: [npc_victor]
+  facts:
+    - "Виктор напоминает о должке: нужно «по-соседски» кое-что отвезти, без вопросов."
+  intro: "ВИКТОР: «Помнишь, я тебя выручил? Время вернуть. Дело пустяковое. Для своих.»"
+  branches:
+    - id: repay
+      match: { verbs: [offer_help, work, give, move] }
+      outcomes:
+        - on: always
+          text: "Ты отвозишь пакет, не заглядывая внутрь. Долг закрыт — а ты теперь чуть глубже в его мире."
+          effects: { unset_flags: [owes_victor], leaning: {crime: 2} }
+          deltas: { L: -3 }
+          leads_to: "контур притягивает (к ③)"
+    - id: refuse
+      match: { verbs: [refuse], tone: [firm, polite, cold] }
+      outcomes:
+        - on: always
+          text: "Ты отказываешься. Виктор холодеет: «Один раз прощаю. Запомни это лицо — лицо человека, которому ты должен.»"
+          effects: { set_flags: [victor_cold] }
+          deltas: { P: 2, L: 1 }
+          leads_to: "Виктор закрывается; серая дверь захлопывается"
+  fallback: { text: "Виктор ждёт ответа, постукивая пальцами по стойке.", reopen: true }
+
+# ---------- N7: фиктивный брак ----------
+- id: node_scheinehe_offer
+  title: "Назовём это браком"
+  category: dilemma
+  act: 2
+  node: N7
+  priority: 66
+  once: true
+  trigger: pool
+  weight: 1.0
+  entry: { all: [ {money_lt: 250}, {leaning_gte: {gray: 2}} ] }
+  stakes: high
+  location: bar_sandmann
+  targets: [npc_victor]
+  facts:
+    - "Через знакомых предлагают фиктивный брак ради статуса — за деньги/услугу."
+    - "Быстрый путь к ВНЖ, но проверки на «настоящесть» и допросы порознь."
+  intro: "ВИКТОР: «Есть тема. Замуж/жениться. Бумажно. Решает всё разом. Но играть придётся убедительно.»"
+  branches:
+    - id: accept
+      match: { verbs: [apply, trade, befriend, talk], honesty: [lie, half_truth] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься на фиктивный брак. Статус замаячил — на зыбкой, лживой опоре."
+          effects: { set_flags: [scheinehe_path], leaning: {gray: 2} }
+          deltas: { T: -4, L: -3 }
+          leads_to: "② серая стабильность (если выдержит проверки)"
+    - id: refuse
+      match: { verbs: [refuse] }
+      outcomes:
+        - on: always
+          text: "Ты отказываешься. «Не по тебе», — пожимает плечами Виктор."
+          deltas: { P: 2, T: 1 }
+          leads_to: "держишь ① или уходишь к ④"
+  fallback: { text: "Предложение висит в воздухе.", reopen: true }
+
+# ---------- N8: зеркало (семя в Акте II) ----------
+- id: node_newcomer_mirror
+  title: "Те же глаза"
+  category: dilemma
+  act: 2
+  node: N8
+  priority: 54
+  once: true
+  trigger: scheduled
+  day: 55
+  entry: { all: [] }
+  stakes: low
+  location: hostel_komet
+  targets: [npc_victor]
+  facts:
+    - "В хостеле — новоприбывший Дима, 23 года. Те же растерянные глаза, что были у тебя в день 1."
+    - "Теперь ты — в роли Виктора."
+  intro: "ДИМА: «Извините... вы по-русски? Я только прилетел. Тут вообще... как оно всё устроено?»"
+  branches:
+    - id: kind_advice
+      match: { verbs: [offer_help, talk, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Держись людей. Не все тут волки», — говоришь ты. Дима кивает, чуть успокоившись."
+          effects: { set_flags: [mirror_kind] }
+          deltas: { A: 2 }
+          leads_to: "красит эпилог: добрый совет"
+    - id: cynic_lesson
+      match: { verbs: [talk], tone: [cold, neutral] }
+      outcomes:
+        - on: always
+          text: "«Правило одно: у всего есть цена. Усвой — выживешь», — роняешь ты. Дима сглатывает."
+          effects: { set_flags: [mirror_cynic] }
+          deltas: { A: -1 }
+          leads_to: "красит эпилог: циничный урок (стал Виктором)"
+    - id: recruit
+      match: { verbs: [persuade, deceive, offer_help], honesty: [lie] }
+      outcomes:
+        - on: always
+          text: "«Хочешь заработать? Есть тема. Слушай сюда...» — ты уже видишь в нём не человека, а ресурс."
+          effects: { set_flags: [mirror_recruit], leaning: {crime: 1} }
+          deltas: { A: -2, T: -2 }
+          leads_to: "красит эпилог: вербовка"
+    - id: warn_off
+      match: { verbs: [refuse, talk], tone: [desperate] }
+      outcomes:
+        - on: always
+          text: "«Пока не поздно — возвращайся. Это не стоит того», — глухо говоришь ты."
+          effects: { set_flags: [mirror_warn] }
+          deltas: { P: -1 }
+          leads_to: "красит эпилог: выгорание"
+  fallback: { text: "Дима ждёт хоть какого-то ответа.", reopen: true }

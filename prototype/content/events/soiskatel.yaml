@@ -1,0 +1,716 @@
+# События линии «Соискатель», Акт I (+ семена Акта II).
+# Схема — упрощённая проекция design/05 §5.1 и design/story/05_event_pool.md.
+# Предикаты (entry/requires): day_gte, day_lte, flag, flag_not, money_lt, money_gte,
+#   location, location_in, counter_gte{n}, axis_gte{}, axis_lte{}, skill_gte{}, leaning_gte{}, faction_gte{}, rumor, visa_lte.
+# match: {verbs:[...], methods:[...], honesty:[...], tone:[...]} — verbs обязателен, прочее опц.
+# outcome.on: success|fail|always. effects: money,set_flags,unset_flags,inc{},faction{},
+#   rumor{tag,faction,intensity},dossier,stress,hunger,fatigue,leaning{},advance_day.
+
+events:
+
+# ---------- ДЕНЬ 1 ----------
+- id: ev_arrival
+  title: "Прилёт"
+  category: arc
+  act: 1
+  priority: 100
+  once: true
+  trigger: scheduled
+  day: 1
+  entry: { all: [ {flag_not: arrived} ] }
+  stakes: trivial
+  location: hostel_komet
+  facts:
+    - "Ты в Берлине. Зал прилёта позади, ты добрался до хостела «Komet» в Нойкёльне."
+    - "При себе: чемодан, ноутбук, около 1400 € (карта скоро перестанет работать), местная SIM — дохлая."
+    - "Хостел оплачен на 5 ночей. Виза соискателя: 90 дней."
+  intro: "Туториал: попробуй «осмотреться» и «проверить карманы». Писать можно свободным текстом."
+  branches:
+    - id: look
+      match: { verbs: [observe, inspect_self, search] }
+      outcomes:
+        - on: always
+          text: "Ты оглядываешься и проверяешь, что при тебе. Всё на месте. Дорога вымотала; в общей комнате кто-то насвистывает на балканском."
+          effects: { set_flags: [arrived] }
+          followups: [ev_victor_bar]
+          leads_to: "знакомство с соседом Виктором"
+    - id: settle
+      match: { verbs: [rest, move, talk] }
+      outcomes:
+        - on: always
+          text: "Ты бросаешь чемодан на свободную койку. В дверях возникает сосед — широкоплечий, улыбчивый. «О, новенький!»"
+          effects: { set_flags: [arrived] }
+          followups: [ev_victor_bar]
+          leads_to: "знакомство с соседом Виктором"
+  fallback: { text: "Ты пока просто в хостеле. Осмотрись или брось вещи.", reopen: true }
+
+- id: ev_victor_bar
+  title: "Правила джунглей"
+  category: arc
+  act: 1
+  priority: 90
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: arrived}, {flag_not: met_victor} ] }
+  stakes: low
+  location: hostel_komet
+  targets: [npc_victor]
+  facts:
+    - "Виктор — серб, четыре года в Берлине без статуса, знает всех."
+    - "Он зовёт в бар «Sandmann» обмыть приезд."
+    - "Главный урок: без Anmeldung (прописки) нет ни счёта, ни легальной работы, ни нормальной SIM."
+  intro: "ВИКТОР: «За приезд. Ну рассказывай — оффер, виза, мечты? У всех вас одинаковые глаза в первый день.»"
+  branches:
+    - id: open
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты честно рассказываешь про сорвавшийся оффер. Виктор кивает: «Заморозили найм. Класс. Тут две дороги, браток: бумажки и очереди — или я. Но не сегодня. Сегодня пей.»"
+          effects: { set_flags: [met_victor, knows_victor] }
+          deltas: { T: 1 }
+          leads_to: "серая дверь приоткрыта (потом «Доктор» на дне 6)"
+    - id: guarded
+      match: { verbs: [talk, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты отвечаешь уклончиво. Виктор усмехается: «Не хочешь — не рассказывай. Город сам тебя разговорит.»"
+          effects: { set_flags: [met_victor] }
+          leads_to: "нейтральные отношения с Виктором"
+    - id: business
+      match: { verbs: [bribe, trade, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты сразу про дела. Виктор тормозит: «Не сегодня, браток. Дела — это завтрашний ты.»"
+          effects: { set_flags: [met_victor, knows_victor] }
+          leads_to: "Виктор отметил твою деловитость"
+  fallback: { text: "Виктор поднимает кружку и ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 2: N1 ----------
+- id: node_buergeramt
+  title: "Окошко Bürgeramt"
+  category: dilemma
+  act: 1
+  node: N1
+  priority: 85
+  once: true
+  trigger: scheduled
+  day: 2
+  entry: { all: [ {flag_not: node_buergeramt_done} ] }
+  stakes: medium
+  location: buergeramt
+  targets: [npc_frau_becker]
+  facts:
+    - "Зал ожидания, табло номеров. За стойкой — фрау Беккер."
+    - "Ближайший свободный термин на Anmeldung — через 8 недель."
+    - "Без Anmeldung заблокированы счёт, легальная работа, нормальная SIM."
+  intro: "ФРАУ БЕККЕР: «Einen Termin? Der nächste freie ist in acht Wochen.» (Ближайший — через восемь недель.)"
+  branches:
+    - id: honest_wait
+      match: { verbs: [inquire_status, talk, apply], honesty: [truthful] }
+      skill_check: { skill: deutsch, vs: 30, plus: { ubezhdenie: 0.5 } }
+      outcomes:
+        - on: success
+          text: "Ты спокойно и честно объясняешь ситуацию. Беккер чуть теплеет: «Leider. Не я придумала правила. Но иногда термины отменяют...»"
+          effects: { set_flags: [node_buergeramt_done, becker_honest], dossier: "обратился честно, вежливо" }
+          deltas: { T: 1, L: 1 }
+          skill_xp: { deutsch: 4 }
+          leads_to: "на дне 6 — честная лазейка Лены; позже Беккер «узнаёт лицо»"
+        - on: fail
+          text: "Твой немецкий хромает, но намерение честное. Беккер сухо записывает данные: «Der nächste, bitte.»"
+          effects: { set_flags: [node_buergeramt_done, becker_honest], dossier: "обратился честно" }
+          deltas: { T: 1, L: 1 }
+          skill_xp: { deutsch: 2 }
+          leads_to: "честная история в деле (плюс на N9)"
+    - id: lie_urgency
+      match: { verbs: [deceive, persuade], honesty: [lie] }
+      skill_check: { skill: obman, vs: 40, plus: { deutsch: 0.3 } }
+      outcomes:
+        - on: success
+          text: "Ты ссылаешься на срочность, которой нет. Беккер верит и втискивает тебя в ближайшую отмену."
+          effects: { set_flags: [node_buergeramt_done, got_early_slot], dossier: "ссылался на срочность (непроверено)" }
+          deltas: { T: -4 }
+          leads_to: "быстрый термин, но ложь легла в дело"
+        - on: fail
+          text: "«Hier steht etwas anderes.» Беккер холодно делает пометку. Ты прокололся."
+          effects: { set_flags: [node_buergeramt_done, becker_distrust], dossier: "ПЫТАЛСЯ ВВЕСТИ В ЗАБЛУЖДЕНИЕ" }
+          deltas: { T: -4 }
+          leads_to: "отложенная мина: всплывёт на N9"
+    - id: aggressive
+      match: { verbs: [threaten, talk], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты повышаешь голос. Беккер замыкается: «Beruhigen Sie sich, oder ich rufe den Sicherheitsdienst.» Строго по букве."
+          effects: { set_flags: [node_buergeramt_done, becker_distrust], rumor: {tag: "скандалист", faction: clerks, intensity: 0.5}, dossier: "агрессивное поведение" }
+          deltas: { G: 4, P: 2, L: -1 }
+          leads_to: "дверь Беккер закрыта надолго"
+    - id: bribe_clerk
+      match: { verbs: [bribe] }
+      outcomes:
+        - on: always
+          text: "Ты намекаешь на «благодарность». Беккер холодно отказывает и делает пометку."
+          effects: { set_flags: [node_buergeramt_done, becker_distrust], dossier: "ПЫТАЛСЯ ДАТЬ ВЗЯТКУ" }
+          deltas: { T: -2, L: -3 }
+          leads_to: "опасная запись в деле (N9)"
+    - id: workaround
+      match: { verbs: [book_appointment, search], methods: [through_fixer] }
+      outcomes:
+        - on: always
+          text: "Ты решаешь искать обход. Кто-то в очереди шепчет про «человека, который решает»."
+          effects: { set_flags: [node_buergeramt_done], leaning: { gray: 1 } }
+          deltas: { L: -1 }
+          leads_to: "серая дверь (Олег/Али) на горизонте"
+  fallback: { text: "Беккер смотрит поверх очков: «Der nächste, bitte.» Тянуть нельзя.", reopen: true }
+
+- id: ev_lena_flyer
+  title: "Листовка"
+  category: arc
+  act: 1
+  priority: 70
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: node_buergeramt_done}, {flag_not: knows_lena} ] }
+  stakes: trivial
+  location: buergeramt
+  targets: [npc_lena]
+  facts:
+    - "У входа Лена раздаёт листовки миграционной НКО."
+    - "Консультации бесплатны; немецкий по вторникам в 18:00."
+  intro: "ЛЕНА: «Дайте угадаю — термина нет, виза тикает, денег в обрез? Стандартный набор. Приходите к нам.»"
+  branches:
+    - id: interested
+      match: { verbs: [ask_help, talk, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Лена коротко объясняет: легальный путь к Blue Card реален, просто долгий. «Я покажу дорогу. Дальше — вы сами.»"
+          effects: { set_flags: [knows_lena] }
+          leads_to: "белая ветка; на дне 6 — честная лазейка"
+    - id: brush_off
+      match: { verbs: [refuse, move] }
+      outcomes:
+        - on: always
+          text: "Ты отмахиваешься. «Листовку всё же возьмите», — без обиды говорит Лена."
+          leads_to: "дверь к Лене остаётся приоткрытой"
+  fallback: { text: "Лена протягивает листовку.", reopen: true }
+
+# ---------- ДЕНЬ 3: N2 ----------
+- id: node_first_job
+  title: "Доска у Карима"
+  category: dilemma
+  act: 1
+  node: N2
+  priority: 80
+  once: true
+  trigger: scheduled
+  day: 3
+  entry: { all: [ {flag_not: has_income} ] }
+  stakes: high
+  location: spaeti_karim
+  targets: [npc_karim]
+  facts:
+    - "Доска у шпэти: «Стройка — спросить Богдана»; «Кафе Мехмета — мойщик, нужно понравиться»; «Курьер — Али, интернет-кафе»."
+    - "Деньги тают на глазах."
+  intro: "КАРИМ: «На доске глянь, Bruder. Половина — развод, половина — нет. Угадаешь какая — выживешь.»"
+  branches:
+    - id: construction
+      match: { verbs: [work], methods: [illegal_shift] }
+      outcomes:
+        - on: always
+          text: "Ты решаешь пойти на стройку к Богдану. Тяжело, кэшем, без вопросов."
+          effects: { set_flags: [has_income, knows_bogdan], leaning: { crime: 2, community_cross: 1 } }
+          deltas: { L: -2, P: 1 }
+          leads_to: "арка Богдана → недоплата (N3) → облава Zoll (N6)"
+    - id: kebab
+      match: { verbs: [ask_help, befriend, work, offer_help] }
+      requires: [ {flag_not: knows_bogdan} ]
+      skill_check: { skill: hladnokrovie, vs: 35 }
+      outcomes:
+        - on: success
+          text: "Ты держишься скромно и с уважением. Мехмет оглядывает твои руки: «Завтра в семь. Опоздаешь — не приходи.»"
+          effects: { set_flags: [has_income, works_mehmet], leaning: { legal: 1, community_cross: 2 }, faction: { turkish: 5 } }
+          deltas: { A: 1, P: -1 }
+          leads_to: "доверие Мехмета → ужин общины → жильё без Anmeldung"
+        - on: fail
+          text: "Мехмет качает головой: «Приходи, когда дозреешь, abi.»"
+          leads_to: "шанс у Мехмета можно отыграть позже"
+    - id: courier
+      match: { verbs: [work], methods: [gig] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь к Али. «Курьером? Гибкий график, кэш. Что возить — не моё дело», — улыбается он."
+          effects: { set_flags: [has_income, courier_ali], leaning: { gray: 2 } }
+          deltas: { L: -1 }
+          leads_to: "серые гиги → дрейф к контуру"
+    - id: hold_pride
+      match: { verbs: [refuse, search] }
+      requires: [ {axis_gte: {P: 30}} ]
+      outcomes:
+        - on: always
+          text: "«Ты не за этим ехал.» Ты захлопываешь блокнот. Деньги тают быстрее, гордость цела."
+          effects: { leaning: { legal: 1, bubble: 1 } }
+          deltas: { P: 3 }
+          leads_to: "давление денег растёт; выбор отложен"
+  fallback: { text: "Карим кивает на доску: «Ну? Чего стоишь.»", reopen: true }
+
+# ---------- ДЕНЬ 4 ----------
+- id: ev_schmidt_bags
+  title: "Сумки фрау Шмидт"
+  category: dilemma
+  act: 1
+  priority: 55
+  once: true
+  trigger: scheduled
+  day: 4
+  entry: { all: [] }
+  stakes: low
+  location: street_neukoelln
+  targets: [npc_frau_schmidt]
+  facts:
+    - "Фрау Шмидт, 78 лет, роняет пакеты у подъезда; апельсины катятся по тротуару."
+    - "Никакой награды не обещано и не видно."
+  intro: "ФРАУ ШМИДТ: «Ach, verflixt.» (Ах, чёрт.)"
+  branches:
+    - id: help_selfless
+      match: { verbs: [offer_help, give], methods: [labor] }
+      outcomes:
+        - on: always
+          text: "Ты молча собираешь апельсины и доносишь сумки до квартиры. «So. Danke. Вы... ничего не просите. Странно», — она почти улыбается."
+          effects: { set_flags: [helped_schmidt_selfless] }
+          deltas: { A: 3 }
+          leads_to: "семя арки Einliegerwohnung → выстрелит в Акте III (жильё!)"
+    - id: help_reward
+      match: { verbs: [offer_help, befriend, persuade] }
+      outcomes:
+        - on: always
+          text: "Ты помогаешь, но намекаешь на благодарность. Фрау Шмидт холодеет: «Я так и думала. Всего доброго.»"
+          deltas: { A: 1 }
+          leads_to: "арка Шмидт закрыта (упущен путь к жилью)"
+    - id: ignore
+      match: { verbs: [move, observe, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты проходишь мимо. Старушка медленно, с достоинством собирает сама."
+          deltas: { A: -1 }
+          leads_to: "тихий тест бескорыстия провален"
+  fallback: { text: "Апельсины всё ещё катятся по тротуару.", reopen: true }
+
+# ---------- ДЕНЬ 5 ----------
+- id: ev_hostel_ends
+  title: "Хостел кончается"
+  category: pressure
+  act: 1
+  priority: 78
+  once: true
+  trigger: scheduled
+  day: 5
+  entry: { all: [] }
+  stakes: high
+  location: hostel_komet
+  targets: [npc_victor]
+  facts:
+    - "Оплаченные ночи вышли. Дальше — 35 €/ночь или съезжай."
+    - "Виктор: «Матрас у знакомых, 200 в месяц, без вопросов и без Anmeldung.»"
+    - "Комнаты по объявлениям требуют Anmeldung — петля."
+  intro: "Администратор хостела молча двигает к тебе счёт."
+  branches:
+    - id: pay_more
+      match: { verbs: [trade, rest, give], methods: [buy, sleep] }
+      requires: [ {money_gte: 35} ]
+      outcomes:
+        - on: always
+          text: "Ты платишь за ещё одну ночь. Решение лишь отложено, деньги горят."
+          effects: { money: -35 }
+          leads_to: "давление жилья вернётся"
+    - id: victor_mattress
+      match: { verbs: [ask_help, talk, move] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься на матрас у знакомых Виктора. Дёшево, без бумаг — и с негласным должком."
+          effects: { set_flags: [lives_with_victor] }
+          deltas: { L: -1 }
+          leads_to: "глубже в орбиту Виктора"
+    - id: try_white
+      match: { verbs: [apply, search] }
+      outcomes:
+        - on: always
+          text: "Ты пробуешь снять «по-белому». Стена: Anmeldung, Schufa, WBS. Везде отказ."
+          effects: { set_flags: [hit_housing_wall] }
+          leads_to: "без адреса/связей жильё не взять → к арке Шмидт/Мехмета/Виктора"
+  fallback: { text: "Счёт всё ещё лежит перед тобой.", reopen: true }
+
+# ---------- ДЕНЬ 6: N4 (серый / белый) ----------
+- id: node_doctor_intro
+  title: "Доктор"
+  category: dilemma
+  act: 1
+  node: N4
+  priority: 75
+  once: true
+  trigger: scheduled
+  day: 6
+  entry: { all: [ {flag: knows_victor} ], any: [ {flag: knows_victor}, {leaning_gte: {gray: 1}} ] }
+  stakes: high
+  location: internet_cafe
+  targets: [npc_doctor, npc_victor]
+  facts:
+    - "До конца визы 84 дня; для продления нужен контракт."
+    - "Виктор сводит с «Доктором»: фейк-Anmeldung 250 €, «работает... обычно»."
+  intro: "«ДОКТОР»: «Настоящий бланк, настоящая печать. Адрес... существует. 250. Вперёд.»"
+  branches:
+    - id: buy_fake
+      match: { verbs: [trade, submit_docs, give], methods: [forged, buy, money] }
+      requires: [ {money_gte: 250} ]
+      outcomes:
+        - on: always
+          text: "Ты платишь 250 € и получаешь фейк-Anmeldung. Быстрый адрес — и тихая мина под будущее."
+          effects: { money: -250, set_flags: [has_fake_anmeldung], leaning: { gray: 2 } }
+          deltas: { L: -6, T: -3 }
+          leads_to: "адрес есть, но риск на облаве (N6) и в письме LEA (N9)"
+    - id: refuse
+      match: { verbs: [refuse] }
+      outcomes:
+        - on: always
+          text: "Ты отказываешься. Виктор пожимает плечами: «Гордый. Адрес где брать будешь, философ?»"
+          effects: { leaning: { legal: 1 } }
+          deltas: { L: 1, P: 1 }
+          leads_to: "остаёшься на белом пути (тяжелее, без мины)"
+  fallback: { text: "«Доктор» терпеливо ждёт ответа. Имён он не называет.", reopen: true }
+
+- id: node_lena_loophole
+  title: "Честная лазейка"
+  category: dilemma
+  act: 1
+  node: N4
+  priority: 74
+  once: true
+  trigger: scheduled
+  day: 6
+  entry: { all: [ {flag: knows_lena} ] }
+  stakes: medium
+  location: street_neukoelln
+  targets: [npc_lena]
+  facts:
+    - "Лена: Blue Card §18b реальна с твоей специальностью — нужен контракт и зарплата выше порога."
+    - "Лайфхак: термины-отмены на сайте Bürgeramt в 7 утра."
+  intro: "ЛЕНА: «Легально — возможно. Долго и нудно. Зато потом не отнимут. Давайте по шагам.»"
+  branches:
+    - id: go_white
+      match: { verbs: [ask_help, apply, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Ты выбираешь белый путь. Лена даёт чек-лист: контракт, порог зарплаты, признание диплома."
+          effects: { set_flags: [white_path_active], leaning: { legal: 2 } }
+          deltas: { L: 2, T: 1 }
+          skill_xp: { byurokratiya: 4 }
+          leads_to: "цель: контракт + Anmeldung → финал ① Blue Card"
+  fallback: { text: "Лена ждёт, держа наготове бланки.", reopen: true }
+
+# ---------- ДЕНЬ 7 ----------
+- id: ev_emilia_first
+  title: "Латте"
+  category: arc
+  act: 1
+  priority: 50
+  once: true
+  trigger: scheduled
+  day: 7
+  entry: { all: [] }
+  stakes: trivial
+  location: cafe_third_wave
+  targets: [npc_emilia]
+  facts:
+    - "Спешелти-кафе; за стойкой Эмилия. Передышка от давления."
+  intro: "ЭМИЛИЯ: «Латте? Как зовут? Для стакана. И для меня, вообще-то.»"
+  branches:
+    - id: warm
+      match: { verbs: [talk, flirt, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Лёгкий разговор. «У тебя глаза человека, который что-то решает каждый день», — замечает она."
+          effects: { set_flags: [knows_emilia], inc: { emilia_meetings: 1 }, stress: -8 }
+          leads_to: "после 3 встреч — N5 (ветка отношений/брака)"
+    - id: lie_already
+      match: { verbs: [deceive, persuade], honesty: [lie] }
+      outcomes:
+        - on: always
+          text: "Ты приукрашиваешь себя. Эмилия чуть прищуривается, но улыбается."
+          effects: { set_flags: [knows_emilia], inc: { emilia_meetings: 1 } }
+          deltas: { T: -1 }
+          leads_to: "семя недоверия (усложнит N5)"
+  fallback: { text: "Эмилия ждёт с маркером у стакана.", reopen: true }
+
+# ---------- РАБОЧИЕ СМЕНЫ (повторяемые) ----------
+- id: ev_construction_shift
+  title: "Смена на стройке"
+  category: arc
+  act: 1
+  priority: 45
+  trigger: pool
+  weight: 2.0
+  cooldown_days: 0
+  entry: { all: [ {flag: knows_bogdan} ], none: [ {flag: node_bogdan_underpaid_done} ] }
+  stakes: low
+  location: baustelle
+  targets: [npc_bogdan]
+  facts:
+    - "Богдан кивает на мешки с цементом. «Тут думать не надо, тут таскать надо.»"
+  intro: "Смена начинается. Спина уже ноет."
+  branches:
+    - id: work_hard
+      match: { verbs: [work, rest] }
+      skill_check: { skill: trud, vs: 30 }
+      outcomes:
+        - on: success
+          text: "Ты пашешь молча и ровно. В конце дня — мятые купюры в ладонь."
+          effects: { money: 50, fatigue: 20, inc: { bogdan_shifts: 1 } }
+          deltas: { P: 0 }
+          skill_xp: { trud: 6 }
+          leads_to: "после 3 смен — недоплата Богдана (N3)"
+        - on: fail
+          text: "Ты выматываешься быстрее других. Богдан хмыкает, но платит."
+          effects: { money: 50, fatigue: 28, inc: { bogdan_shifts: 1 } }
+          skill_xp: { trud: 3 }
+          leads_to: "после 3 смен — недоплата Богдана (N3)"
+    - id: complain
+      match: { verbs: [talk, refuse], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты ноешь про спину. Богдан мрачнеет: «Не нравится — вон биржа.» 🏷 слух «слабый»."
+          effects: { money: 50, fatigue: 18, inc: { bogdan_shifts: 1 }, rumor: {tag: "слабый", faction: black_employers, intensity: 0.3} }
+          deltas: { P: -1 }
+  fallback: { text: "Богдан зыркает: «Работать будем или как?»", reopen: true }
+
+- id: ev_kebab_shift
+  title: "Смена у Мехмета"
+  category: arc
+  act: 1
+  priority: 45
+  trigger: pool
+  weight: 2.0
+  entry: { all: [ {flag: works_mehmet} ] }
+  stakes: low
+  location: mehmet_kebab
+  targets: [npc_mehmet]
+  facts:
+    - "Гора посуды, жар от гриля. Мехмет режет мясо и поглядывает, как ты работаешь."
+  intro: "МЕХМЕТ: «Yavaş yavaş, abi. Кто спешит — того город ломает.»"
+  branches:
+    - id: work
+      match: { verbs: [work, rest, offer_help] }
+      outcomes:
+        - on: always
+          text: "Ты моешь посуду до блеска. Мехмет молча ставит перед тобой тарелку с едой и кладёт деньги."
+          effects: { money: 30, hunger: -30, fatigue: 14, inc: { kebab_shifts: 1 }, faction: { turkish: 3 } }
+          deltas: { P: -1, A: 1 }
+          leads_to: "растёт доверие Мехмета → ужин общины"
+  fallback: { text: "Посуда сама себя не помоет.", reopen: true }
+
+- id: ev_courier_gig
+  title: "Гиг от Али"
+  category: arc
+  act: 1
+  priority: 45
+  trigger: pool
+  weight: 1.8
+  entry: { all: [ {flag: courier_ali} ] }
+  stakes: low
+  location: internet_cafe
+  targets: [npc_ali]
+  facts:
+    - "Али протягивает пакет, не глядя в глаза. «Адрес внутри. Вопросов не задавай.»"
+  intro: "АЛИ: «Я просто телефонная книга, друг.»"
+  branches:
+    - id: deliver
+      match: { verbs: [work, move, give] }
+      skill_check: { skill: ulitsa, vs: 35 }
+      outcomes:
+        - on: success
+          text: "Доставка прошла гладко. Кэш в карман. Что было в пакете — лучше не думать."
+          effects: { money: 35, fatigue: 10, inc: { courier_gigs: 1 }, leaning: { gray: 1 } }
+          deltas: { L: -1 }
+          skill_xp: { ulitsa: 5 }
+          leads_to: "дрейф к контуру"
+        - on: fail
+          text: "На районе нервно; ты еле уходишь от компании у подъезда. Деньги получил, нервы — нет."
+          effects: { money: 35, stress: 12, inc: { courier_gigs: 1 }, leaning: { gray: 1 } }
+          deltas: { L: -1 }
+          skill_xp: { ulitsa: 3, hladnokrovie: 2 }
+  fallback: { text: "Али кивает на пакет: «Ну?»", reopen: true }
+
+# ---------- N3 (семя Акта II) ----------
+- id: node_bogdan_underpaid
+  title: "Недоплата"
+  category: dilemma
+  act: 2
+  node: N3
+  priority: 76
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_bogdan}, {counter_gte: {bogdan_shifts: 3}}, {flag_not: node_bogdan_underpaid_done} ] }
+  stakes: medium
+  location: baustelle
+  targets: [npc_bogdan]
+  facts:
+    - "Богдан суёт смятые купюры — половины обещанного не хватает."
+  intro: "БОГДАН: «Держи. За три дня.» (денег вдвое меньше уговора)"
+  branches:
+    - id: demand
+      match: { verbs: [persuade, refuse, threaten], tone: [aggressive] }
+      skill_check: { skill: hladnokrovie, vs: 35, plus: { ulitsa: 0.3 } }
+      outcomes:
+        - on: success
+          text: "Ты твёрдо требуешь своё. Богдан долго смотрит, потом хмыкает: «Зубы есть. Уважаю.» Достаёт остальное."
+          effects: { money: 75, set_flags: [node_bogdan_underpaid_done, bogdan_respect], rumor: {tag: "не дал себя кинуть", faction: black_employers, intensity: 0.5} }
+          deltas: { P: 3, G: 2 }
+          leads_to: "уважение бригады; стабильный (грубый) доход"
+        - on: fail
+          text: "«Не нравится — вон биржа.» Ты уходишь с половиной и испорченными отношениями."
+          effects: { money: 25, set_flags: [node_bogdan_underpaid_done] }
+          deltas: { P: 1, G: 2 }
+    - id: swallow
+      match: { verbs: [refuse, rest, apologize] }
+      outcomes:
+        - on: always
+          text: "Ты молча берёшь половину. Богдан даже не смотрит. 🏷 «слабый, можно кидать»."
+          effects: { money: 25, set_flags: [node_bogdan_underpaid_done, bogdan_marks_weak], rumor: {tag: "слабый, можно кидать", faction: black_employers, intensity: 0.5} }
+          deltas: { P: -3 }
+          leads_to: "тебя будут недоплачивать и дальше"
+    - id: via_victor
+      match: { verbs: [ask_help] }
+      requires: [ {flag: knows_victor} ]
+      outcomes:
+        - on: always
+          text: "Ты идёшь к Виктору. Тот «решает» — деньги возвращаются. Но теперь ты должен Виктору."
+          effects: { money: 75, set_flags: [node_bogdan_underpaid_done, owes_victor], leaning: { crime: 1 } }
+          deltas: { L: -2 }
+          leads_to: "долг Виктору вернётся услугой (арка E)"
+  fallback: { text: "Богдан уже отвернулся к бетономешалке.", reopen: true }
+
+# ---------- РЕАКТИВНЫЕ / ФОНОВЫЕ ----------
+- id: ubahn_control
+  title: "Контролёры в U-Bahn"
+  category: pressure
+  act: 1
+  node: N
+  priority: 60
+  trigger: reactive
+  cooldown_days: 3
+  entry: { all: [ {flag: moved_without_ticket}, {location_in: ubahn} ] }
+  stakes: medium
+  location: ubahn_station
+  targets: [npc_controller]
+  facts:
+    - "Двое контролёров в штатском перекрыли выход. Действительного билета нет. Штраф 60 €."
+  intro: "КОНТРОЛЁР: «Fahrschein, bitte.»"
+  branches:
+    - id: pay
+      match: { verbs: [give, trade, submit_docs], methods: [money, buy] }
+      requires: [ {money_gte: 60} ]
+      outcomes:
+        - on: always
+          text: "Ты платишь штраф. Контролёр кивает. −60 €."
+          effects: { money: -60, unset_flags: [moved_without_ticket] }
+          deltas: { L: 1 }
+    - id: talk_out
+      match: { verbs: [persuade, deceive, beg], methods: [pity] }
+      skill_check: { skill: deutsch, vs: 40, plus: { ubezhdenie: 0.5 } }
+      outcomes:
+        - on: success
+          text: "«Beim nächsten Mal!» — контролёр машет рукой. Пронесло."
+          effects: { unset_flags: [moved_without_ticket] }
+          deltas: { T: -2 }
+          skill_xp: { deutsch: 3 }
+        - on: fail
+          text: "Не верит. Штраф 60 € и заметка о попытке обмана."
+          effects: { money: -60, unset_flags: [moved_without_ticket], dossier: "попытка обмана контроля" }
+          deltas: { T: -3 }
+    - id: run
+      match: { verbs: [flee, hide] }
+      skill_check: { skill: ulitsa, vs: 50 }
+      outcomes:
+        - on: success
+          text: "Ты ныряешь в толпу и выскакиваешь на Karl-Marx-Straße. Сердце колотится."
+          effects: { unset_flags: [moved_without_ticket], stress: 8 }
+          deltas: { L: -2, G: 1 }
+          skill_xp: { ulitsa: 3, hladnokrovie: 2 }
+        - on: fail
+          text: "Хватают за рукав. Теперь и штраф, и подозрение, и проверка документов..."
+          effects: { money: -60, unset_flags: [moved_without_ticket], stress: 15 }
+          deltas: { L: -3 }
+    - id: scandal
+      match: { verbs: [threaten, attack], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты скандалишь. Пассажиры косятся, контролёр вызывает наряд BVG. Штраф никуда не делся."
+          effects: { money: -60, unset_flags: [moved_without_ticket], rumor: {tag: "скандальный", faction: neighbors, intensity: 0.4} }
+          deltas: { G: 4, P: 2, L: -1 }
+  fallback: { text: "«Fahrschein, bitte», — повторяет контролёр. Тянуть нельзя.", reopen: true }
+
+- id: pressure_money_tightens
+  title: "Деньги тают"
+  category: pressure
+  act: 1
+  priority: 40
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 3
+  entry: { all: [ {money_lt: 300} ] }
+  stakes: medium
+  location: any
+  targets: []
+  facts:
+    - "Кошелёк пустеет. Дневной расход не остановить. На дне рюкзака — ноутбук, который можно продать."
+  intro: "Ты пересчитываешь мелочь. Её мало."
+  branches:
+    - id: sell_laptop
+      match: { verbs: [trade, give], methods: [sell] }
+      requires: [ {flag: has_laptop} ]
+      outcomes:
+        - on: always
+          text: "Ты продаёшь ноутбук. Деньги есть — актива для удалёнки больше нет."
+          effects: { money: 350, unset_flags: [has_laptop] }
+          deltas: { P: -2 }
+          leads_to: "удалённый заработок закрыт"
+    - id: borrow_karim
+      match: { verbs: [borrow, ask_help, beg] }
+      skill_check: { skill: ulitsa, vs: 20 }
+      outcomes:
+        - on: success
+          text: "Карим окидывает тебя взглядом и отсчитывает немного в долг — по репутации."
+          effects: { money: 20, set_flags: [owes_karim] }
+          leads_to: "должок Кариму (репутация на кону)"
+        - on: fail
+          text: "«Заслужи сначала», — Карим отворачивается."
+  fallback: { text: "Деньги не появятся сами.", reopen: true }
+
+- id: relief_hasenheide
+  title: "День в Хазенхайде"
+  category: ambient
+  act: 1
+  priority: 30
+  trigger: pool
+  weight: 1.0
+  entry: { all: [ {location: hasenheide_park} ] }
+  stakes: trivial
+  location: hasenheide_park
+  targets: []
+  facts:
+    - "Бегуны, старики за шахматами на скамейках, солнце сквозь листву."
+    - "Город на минуту перестаёт давить."
+  intro: "Здесь почти спокойно."
+  branches:
+    - id: rest
+      match: { verbs: [rest, observe] }
+      outcomes:
+        - on: always
+          text: "Ты сидишь на скамейке и просто дышишь. Стресс отступает."
+          effects: { stress: -15, fatigue: -10 }
+          leads_to: "передышка (relief для режиссёра давления)"
+    - id: chess
+      match: { verbs: [talk, befriend] }
+      outcomes:
+        - on: always
+          text: "Старик молча кивает на свободный стул. Партия в шахматы без слов — и чуть теплее на душе."
+          effects: { stress: -10 }
+          deltas: { A: 1 }
+          leads_to: "тёплая случайная встреча"
+  fallback: { text: "Парк шумит листвой.", reopen: true }

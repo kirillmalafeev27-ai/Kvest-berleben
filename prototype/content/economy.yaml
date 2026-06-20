@@ -1,0 +1,77 @@
+# Экономика и балансовые константы прототипа (линия «Соискатель»).
+# Документируется в design/10_ekonomika_balans.md. Все числа — дефолты под тюнинг.
+
+start:
+  money: 1400          # € наличными + на карте (карта скоро отвалится)
+  visa_days: 90        # главный таймер линии
+  hostel_nights_paid: 5
+  deutsch: 20          # A2
+  skills: { deutsch: 20, torg: 5, ubezhdenie: 10, obman: 5, hladnokrovie: 10, ulitsa: 5, byurokratiya: 10, trud: 5 }
+  flags: [ has_laptop ]
+
+daily:
+  cost_base: 25        # еда+транспорт+мелочи, минимум
+  cost_max: 40         # если шиковать/болеть
+  hunger_per_day: 12   # растёт, если не поел
+  fatigue_per_day: 10
+  stress_decay: 5      # сам по себе чуть спадает
+
+housing:
+  hostel_night: 35
+  mattress_month: 200  # у знакомых Виктора, без Anmeldung
+  room_sublet_month: 350
+  wg_month: 550
+
+wages:                 # за смену/гиг, кэш
+  construction_shift: 50      # Богдан; при «кидке» платит ~25
+  construction_underpaid: 25
+  kebab_shift: 30             # + бесплатная еда (−hunger)
+  courier_gig: 30             # серое, разброс
+  remote_gig: 80              # нужен ноут + интернет; редко
+
+bureaucracy:
+  anmeldung_fee: 0            # реальность: Anmeldung бесплатна; барьер — ТЕРМИН, а не цена
+  fake_anmeldung: 250         # «Доктор»
+  lawyer: 400                 # община может скинуться
+  blue_card_salary_threshold: 3900   # €/мес брутто (порог §18b, ориентир)
+
+assets:
+  laptop_value: 350           # цена продажи ноута
+
+# Рост навыков (v0.1 §2.3): Δ = base * difficulty * (1 - skill/softcap)
+skills_model:
+  base: 5
+  softcap: 70
+  success_multiplier: 2       # немецкий: успех ×2, провал ×1
+
+# Начисление дельт осей (v0.1 §2.2)
+axes_model:
+  clamp_per_event: 15         # |дельта| за одно событие ≤ 15
+  axis_min: -100
+  axis_max: 100
+  antifarm_base: 0.5          # k-е повторение verb за день × 0.5^k
+  inertia_threshold: 50       # дальше от 0, чем |axis|>50 — откат дороже
+  inertia_factor: 0.6         # множитель дельты, идущей обратно к 0 при инерции
+
+# Пороги-гейты (v0.1 §2.5 / design/03 §3.5)
+thresholds:
+  deutsch_german_berlin: 50   # открывается «немецкий Берлин»
+  law_criminal_contact: -30   # криминал сам находит (+ ulitsa>25)
+  ulitsa_criminal: 25
+  truth_wolf: -40             # «волк и пастух»: не верят даже правде
+  pride_hold_marka: 30        # держать марку (отказ от работы ниже себя)
+
+# Режиссёр давления (design/05 §5.4): tension = взвешенная сумма
+director:
+  weight_money: 0.4           # чем меньше денег, тем выше
+  weight_days: 0.3            # чем меньше дней визы
+  weight_stress: 0.3
+  relief_above: 0.65          # tension выше — подмешивать выдох
+  pressure_below: 0.30        # ниже — подмешивать давление
+
+# Цель баланса: математика выживания сходится в кризис на 3-й неделе.
+# 1400€ − (25..40 €/день) − (35 €/ночь после 5 ночей) ⇒ ~день 18-22 деньги критичны,
+# что совпадает с давлением «нужен контракт/жильё». Это намеренно.
+balance_targets:
+  crisis_day_range: [18, 24]
+  session_minutes: 40

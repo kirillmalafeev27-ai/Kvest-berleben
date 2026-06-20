@@ -1,0 +1,27 @@
+# Реестр локаций (design/06 §6.4). id используются в событиях и навигации.
+locations:
+  airport_ber:      { name: "Аэропорт BER (прилёт)", district: "Шёнефельд" }
+  hostel_komet:     { name: "Хостел «Komet»", district: "Нойкёльн", connects: [street_neukoelln, bar_sandmann] }
+  bar_sandmann:     { name: "Бар «Sandmann»", district: "Нойкёльн", connects: [hostel_komet, street_neukoelln] }
+  buergeramt:       { name: "Bürgeramt Neukölln", district: "Нойкёльн", connects: [street_neukoelln] }
+  auslaenderbehoerde: { name: "Ausländerbehörde (LEA)", district: "Берлин", connects: [street_neukoelln] }
+  spaeti_karim:     { name: "Шпэти дяди Карима", district: "Нойкёльн", connects: [street_neukoelln] }
+  mehmet_kebab:     { name: "Кебабная Мехмета", district: "Нойкёльн", connects: [sonnenallee_market, street_neukoelln] }
+  sonnenallee_market: { name: "Зонненаллее (рынок)", district: "Нойкёльн", connects: [mehmet_kebab, street_neukoelln, mosque_community] }
+  baustelle:        { name: "Стройка на Херманнштрассе", district: "Нойкёльн", connects: [street_neukoelln] }
+  internet_cafe:    { name: "Интернет-кафе Али", district: "Нойкёльн", connects: [street_neukoelln] }
+  cafe_third_wave:  { name: "Кафе (Эмилия)", district: "Нойкёльн", connects: [street_neukoelln] }
+  hasenheide_park:  { name: "Парк Хазенхайде", district: "Нойкёльн", connects: [street_neukoelln] }
+  mosque_community: { name: "Мечеть / общинный центр", district: "Нойкёльн", connects: [sonnenallee_market] }
+  einliegerwohnung: { name: "Квартирка фрау Шмидт", district: "Нойкёльн", connects: [street_neukoelln] }
+  ubahn_station:    { name: "Станция U-Bahn", district: "Нойкёльн", connects: [street_neukoelln] }
+  street_neukoelln: { name: "Улицы Нойкёльна", district: "Нойкёльн",
+                      connects: [hostel_komet, bar_sandmann, buergeramt, spaeti_karim, mehmet_kebab,
+                                 sonnenallee_market, baustelle, internet_cafe, cafe_third_wave,
+                                 hasenheide_park, ubahn_station, einliegerwohnung, auslaenderbehoerde] }
+
+# Группы для условий location_in
+groups:
+  ubahn: [ubahn_station]
+  state: [buergeramt, auslaenderbehoerde]
+  community_hub: [sonnenallee_market, spaeti_karim, mosque_community]

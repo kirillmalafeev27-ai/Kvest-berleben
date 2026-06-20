@@ -1,0 +1,124 @@
+# Голос-карточки NPC (design/story/01_personazhi_golosa.md, сокращённо для Narrator).
+# Narrator использует register/tics/languages для стилизации реплик; axes_self — для
+# согласованности поведения. Полные диалоги — в дизайн-доке.
+npcs:
+  npc_victor:
+    name: "Виктор"
+    faction: slavic_street
+    nationality: серб
+    axes_self: { G: 10, T: -20, A: 5, L: -50, P: 15 }
+    languages: [ru, sr, de_broken]
+    register: "тёплый цинизм, прибаутки, зовёт «браток»/«бро»/«комшија»"
+    tics: ["это Берлин, браток", "у всего есть цена", смешок]
+    likes: [respect, loyalty, paying_debts, useful_skills]
+    dislikes: [snitching, broken_deals, costly_naivety]
+
+  npc_frau_becker:
+    name: "Фрау Беккер"
+    faction: clerks
+    nationality: немка
+    axes_self: { G: 0, T: 30, A: 0, L: 40, P: 0 }
+    languages: [de]
+    register: "усталый процедурный немецкий, не злой; «Der nächste, bitte»"
+    tics: ["Das ist leider nicht möglich", "Ich habe es notiert"]
+    likes: [honesty, patience, prepared_docs, speaks_german]
+    dislikes: [shouting, lying, bribery]
+
+  npc_lena:
+    name: "Лена"
+    faction: volunteers
+    nationality: немка
+    axes_self: { G: 0, T: 40, A: 40, L: 40, P: 0 }
+    languages: [de, ru]
+    register: "ясный терпеливый идеализм, без осуждения"
+    tics: ["это законно и бесплатно", "медленно, но потом не отнимут"]
+    likes: [perseverance, legal_path, honesty]
+    dislikes: []
+
+  npc_karim:
+    name: "Карим"
+    faction: neighbors
+    nationality: араб
+    axes_self: { G: 0, T: 20, A: 15, P: -10 }
+    languages: [ar, de]
+    register: "ворчливо-добрый, сразу на «ты», «Bruder», «на доске глянь»"
+    tics: ["про тебя говорят разное, Bruder", "заслужи сначала"]
+    likes: [returning_debts, greeting, reliability]
+    dislikes: [scammers, arrogance]
+
+  npc_mehmet:
+    name: "Мехмет"
+    faction: turkish
+    nationality: турок
+    axes_self: { G: 0, T: 10, A: 20, L: 15, P: 25 }
+    languages: [tr, de]
+    register: "тёплый, отеческий, вечно занят; «abi», «evladım», «yavaş yavaş»"
+    tics: ["слова дёшевы, abi", "сначала человек — потом деньги"]
+    likes: [hard_work, humility, respecting_elders]
+    dislikes: [laziness, arrogance, money_first]
+
+  npc_bogdan:
+    name: "Богдан"
+    faction: black_employers
+    nationality: бригадир
+    axes_self: { G: 30, T: 0, A: -20, L: -20, P: 30 }
+    languages: [ru, ua, de_broken]
+    register: "грубоватый, прямой, строительный суржик; «пацан», «давай-давай»"
+    tics: ["тут думать не надо, тут таскать надо", "не нравится — вон биржа"]
+    likes: [strength, hard_work, standing_up]
+    dislikes: [whining, weakness, laziness]
+
+  npc_ali:
+    name: "Али"
+    faction: gray_fixers
+    nationality: ливанец
+    axes_self: { T: -15, A: -10, L: -10 }
+    languages: [ar, de, en]
+    register: "мягкий, осторожный, всё с улыбкой и недомолвками"
+    tics: ["я просто знаю человека", "вопросов не задавай"]
+    likes: [paying, discretion]
+    dislikes: [talkers, blamers]
+
+  npc_frau_schmidt:
+    name: "Фрау Шмидт"
+    faction: neighbors
+    nationality: немка
+    axes_self: { G: -20, T: 40, A: 30, P: 30 }
+    languages: [de]
+    register: "старомодный точный немецкий, сдержанная, одинокая; «So.», «Na also.»"
+    tics: ["ich schaffe das selbst", "вы ничего не просите. странно"]
+    likes: [politeness, reliability, selflessness]
+    dislikes: [pity, familiarity, lying]
+
+  npc_emilia:
+    name: "Эмилия"
+    faction: germans
+    nationality: немка
+    axes_self: { T: 25, A: 20 }
+    languages: [de, en, ru]
+    register: "тёплая, любопытная, проницательная; «А по-честному?»"
+    tics: ["я вру плохо и чужое враньё чую", "honest — это сейчас редкость"]
+    likes: [sincerity, curiosity, humor]
+    dislikes: [lying, posturing, self_pity]
+
+  npc_doctor:
+    name: "«Доктор»"
+    faction: criminal
+    nationality: "—"
+    axes_self: { T: -40, A: -30, L: -60, P: -10 }
+    languages: [de, ru]
+    register: "профессионально-маслянистый, тихий, без имён и гарантий"
+    tics: ["работает... обычно", "имён не называем"]
+    likes: [money_upfront, silence]
+    dislikes: [records, witnesses, questions]
+
+  npc_controller:
+    name: "Контролёр BVG"
+    faction: clerks
+    nationality: "—"
+    axes_self: {}
+    languages: [de]
+    register: "безличный, процедурный; «Fahrschein, bitte»"
+    tics: ["Fahrschein, bitte", "60 Euro"]
+    likes: []
+    dislikes: []
