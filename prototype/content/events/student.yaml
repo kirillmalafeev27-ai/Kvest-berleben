@@ -1,0 +1,1018 @@
+# События линии «Студент», Акт I–III.
+# Канон: design/02_magistralnye_linii.md §2.4; NPC: design/09_personazhi.md §Vietnamese/Chinese.
+# Стартовые данные (economy.yaml lines.student):
+#   money 900, visa_days 75 (clock_label "Sperrkonto/учёба"), deutsch 25,
+#   flags [has_laptop, work_limit], location plattenbau_flat.
+# Двойной счётчик давления: деньги Sperrkonto тают (~934/мес) + нужно показывать академпрогресс.
+# Работа ограничена 120/240 дней в году — превышение бьёт по визе.
+# Уникальный хаб: dong_xuan (вьетнамский рынок, тётушка Хоа, серый заработок).
+# Тон (design/08): изоляция с достоинством; вьетнамский/китайский/немецкий вкрапления с переводом.
+
+events:
+
+# ════════════════════════════════════════════════════════════
+#  АКТ I  (дни 1–20)
+# ════════════════════════════════════════════════════════════
+
+# ---------- ДЕНЬ 1: прибытие ----------
+- id: student_arrival
+  title: "Первый вечер"
+  category: arc
+  act: 1
+  priority: 100
+  once: true
+  trigger: scheduled
+  day: 1
+  entry: { all: [ {flag_not: student_arrived} ] }
+  stakes: trivial
+  location: plattenbau_flat
+  facts:
+    - "Ты — китаец или вьетнамец, около 21 года, студенческая виза. Берлин. Plattenbau на окраине."
+    - "При тебе: ноутбук, 900 € (Sperrkonto отдаёт по ~934/мес, но банк проверяет остаток), Work Permit на 120 дней в году."
+    - "Соседи по комнате — двое незнакомых. Немецкий у тебя — A2, примерно. Университет завтра."
+    - "Родители перевели всё что могли. Mẹ сказала: «Con phải cố lên.» (Ты должен стараться, дитя.)"
+  intro: "Чемодан у кровати. Соседи молчат. Телефон показывает: 22:47. За окном — плоские крыши."
+  branches:
+    - id: unpack
+      match: { verbs: [observe, inspect_self, search, rest] }
+      outcomes:
+        - on: always
+          text: "Ты разбираешь вещи. На дне сумки — конверт с семейной фотографией и листок с суммами: сколько уже потрачено, сколько осталось. Цифры давят."
+          effects: { set_flags: [student_arrived], stress: 5 }
+          leads_to: "завтра — первый день в универе (N1)"
+    - id: call_home
+      match: { verbs: [talk, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты звонишь домой. Мама переспрашивает трижды — связь плохая. «Хорошо? Ешь?» — «Хорошо, мама. Всё хорошо.» Ты не говоришь, что ещё не ел с самолёта."
+          effects: { set_flags: [student_arrived], stress: -5 }
+          deltas: { P: 1 }
+          leads_to: "завтра — первый день в универе (N1)"
+  fallback: { text: "Чемодан сам себя не разберёт. Что делаешь?", reopen: true }
+
+# ---------- ДЕНЬ 2: N1 — регистрация / первый контакт с системой ----------
+- id: student_node_n1_uni
+  title: "Studienkolleg. Первый день"
+  category: dilemma
+  act: 1
+  node: N1
+  priority: 92
+  once: true
+  trigger: scheduled
+  day: 2
+  entry: { all: [ {flag: student_arrived}, {flag_not: student_n1_done} ] }
+  stakes: medium
+  location: auslaenderbehoerde
+  targets: [npc_studienbuero]
+  facts:
+    - "Студенческий деканат. Г-н Краузе объясняет правила: отчётность об успеваемости каждые 2 семестра."
+    - "Минимальный балл — иначе потеря статуса «студент» и виза не продлевается."
+    - "Работа: не более 120 дней полной занятости (или 240 половинных) в году. «Превышение — это нарушение визового условия.»"
+    - "Sperrkonto: банк проверяет, что сумма выше порога. Если тратишь слишком быстро — проблема."
+  intro: "Г-Н КРАУЗЕ: «Laut Prüfungsordnung, Sie müssen mindestens... (По правилам экзаменационного регламента, вы обязаны...)» Он говорит быстро. Немецкий плывёт."
+  branches:
+    - id: listen_carefully
+      match: { verbs: [observe, inquire_status, ask_help], honesty: [truthful] }
+      skill_check: { skill: deutsch, vs: 28 }
+      outcomes:
+        - on: success
+          text: "Ты уловил главное: два счётчика давления — деньги и оценки. Краузе замечает, что ты слушаешь, и чуть замедляется."
+          effects: { set_flags: [student_n1_done, understands_double_pressure], inc: { study_progress: 1 } }
+          deltas: { L: 1 }
+          skill_xp: { deutsch: 4, byurokratiya: 3 }
+          leads_to: "N2 — стратегия выживания"
+        - on: fail
+          text: "Поток немецкого слипается в единую стену звуков. Ты кивал. Главное ты понял потом — из листовки, которую дали на выходе."
+          effects: { set_flags: [student_n1_done], stress: 8 }
+          skill_xp: { deutsch: 2 }
+          leads_to: "N2 — без чёткого понимания правил (риск)"
+    - id: ask_chinese
+      match: { verbs: [ask_help, talk, befriend] }
+      outcomes:
+        - on: always
+          text: "У выхода — другой студент, китаец. Он объясняет по-китайски: «两个压力。学习和钱。» (Два давления. Учёба и деньги.) Его зовут Вэй."
+          effects: { set_flags: [student_n1_done, met_wei], stress: -5 }
+          deltas: { A: 1 }
+          skill_xp: { deutsch: 1 }
+          followups: [student_wei_first_talk]
+          leads_to: "знакомство с Вэй (N5-семя)"
+    - id: submit_forms_quiet
+      match: { verbs: [submit_docs, apply, book_appointment] }
+      outcomes:
+        - on: always
+          text: "Ты молча сдаёшь формы. Краузе ставит штамп. «Willkommen an der Hochschule.» Ты выходишь на холодный берлинский воздух."
+          effects: { set_flags: [student_n1_done], inc: { study_progress: 1 } }
+          skill_xp: { byurokratiya: 2 }
+          leads_to: "N2 — стратегия выживания"
+  fallback: { text: "Краузе смотрит поверх бумаг.", reopen: true }
+
+# ---------- Цепочка: первый разговор с Вэй ----------
+- id: student_wei_first_talk
+  title: "一样的压力 (Одинаковое давление)"
+  category: arc
+  act: 1
+  priority: 80
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: met_wei}, {flag_not: wei_talk1_done} ] }
+  stakes: low
+  location: plattenbau_flat
+  targets: [npc_wei]
+  facts:
+    - "Вэй живёт в соседнем блоке. Второй семестр. Знает Берлин лучше."
+    - "Его родители тоже ждут. «Родители не знают» — его любимая фраза."
+  intro: "ВЭЙ: «У тебя часы посчитаны? У меня — восемьдесят три из ста двадцати. Мне хватит до января.»"
+  branches:
+    - id: honest_pressure
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь честно: денег меньше, чем казалось. Вэй кивает: «Все так говорят в первый месяц. Потом привыкаешь — или ломаешься.» Он не улыбается."
+          effects: { set_flags: [wei_talk1_done, wei_knows_pressure], inc: { wei_trust: 1 } }
+          deltas: { A: 1 }
+          leads_to: "Вэй — будущее зеркало N5"
+    - id: save_face
+      match: { verbs: [talk], honesty: [half_truth, lie] }
+      outcomes:
+        - on: always
+          text: "«Нормально», — говоришь ты. Вэй смотрит на тебя секунду дольше нормального. «Ладно», — произносит он наконец."
+          effects: { set_flags: [wei_talk1_done], deltas: {T: -1} }
+          leads_to: "Вэй видит маску — это аукнется"
+  fallback: { text: "Вэй ждёт ответа.", reopen: true }
+
+# ---------- ДЕНЬ 5: N2 — как выживать (учёба vs подработка) ----------
+- id: student_node_n2_survival
+  title: "Как выжить здесь"
+  category: dilemma
+  act: 1
+  node: N2
+  priority: 88
+  once: true
+  trigger: scheduled
+  day: 5
+  entry: { all: [ {flag: student_n1_done}, {flag_not: student_n2_done} ] }
+  stakes: high
+  location: plattenbau_flat
+  facts:
+    - "900 € осталось. Ежемесячный минимум — ~650 € (жильё + еда). Sperrkonto отдаёт порциями."
+    - "Легальная работа: до 120 дней в году. Сейчас конец октября — уже потрачено 0 дней."
+    - "Вариант А: найти легальную подработку (медленно, но чисто, ест рабочие дни)."
+    - "Вариант Б: Dong Xuan — тётушка Хоа берёт помогать в нейл-салоне, кэш, неофициально."
+    - "Вариант В: учиться изо всех сил, просить родных прислать ещё."
+  intro: "Ты закрываешь таблицу расходов. Цифры не сходятся. Нужно решение."
+  branches:
+    - id: legal_work_search
+      match: { verbs: [apply, search, work], methods: [through_institution] }
+      outcomes:
+        - on: always
+          text: "Ты ищешь легальную работу через студенческий портал: кампусная библиотека, кофейня, промо. Не быстро, но чисто. Каждый рабочий день — минус из лимита 120."
+          effects: { set_flags: [student_n2_done, legal_work_path], leaning: { legal: 2 }, inc: { work_days_used: 0 } }
+          deltas: { L: 2 }
+          skill_xp: { byurokratiya: 2 }
+          leads_to: "белый путь — медленно, зато N6-риск минимален"
+    - id: dong_xuan_hoa
+      match: { verbs: [ask_help, work, move, trade] }
+      outcomes:
+        - on: always
+          text: "Ты едешь в Dong Xuan. В глубине рынка — нейл-салон с вывеской на вьетнамском. Тётушка Хоа оглядывает тебя: «Con người Việt không? (Ты вьетнамец?)» Ты объясняешь ситуацию. Она молчит минуту. «Làm đi con. Три дня в неделю. Кэш. Я ничего не слышала.»"
+          effects: { set_flags: [student_n2_done, hoa_work_gray, knows_hoa], leaning: { gray: 2 } }
+          deltas: { L: -2 }
+          leads_to: "серый путь у Хоа — деньги есть, виза под угрозой"
+    - id: ask_parents
+      match: { verbs: [ask_help, beg, talk], methods: [by_phone] }
+      requires: [ {axis_gte: {P: 0}} ]
+      outcomes:
+        - on: always
+          text: "Ты звонишь домой и после долгого молчания говоришь, что деньги кончаются. Пауза. «Con cần bao nhiêu? (Сколько тебе нужно, дитя?)» — голос матери. Стыд и облегчение одновременно."
+          effects: { set_flags: [student_n2_done, asked_parents], money: 300, stress: 15 }
+          deltas: { P: -3, A: 1 }
+          leads_to: "деньги есть, но долг перед родителями растёт"
+    - id: study_only
+      match: { verbs: [rest, refuse, observe] }
+      requires: [ {flag: understands_double_pressure} ]
+      outcomes:
+        - on: always
+          text: "«Сначала учёба.» Ты закрываешь вкладку с объявлениями. Деньги закончатся быстрее — зато рабочие дни не горят, и Краузе не придерётся к прогрессу."
+          effects: { set_flags: [student_n2_done, study_first_path], leaning: { legal: 1 }, stress: 8 }
+          deltas: { P: 2, L: 1 }
+          leads_to: "чистый путь под максимальным финансовым давлением"
+  fallback: { text: "Таблица расходов открыта. Ответа нет — только выбор.", reopen: true }
+
+# ---------- Рабочие смены у Хоа (повторяемые) ----------
+- id: student_hoa_shift
+  title: "Смена в нейл-салоне"
+  category: arc
+  act: 1
+  priority: 50
+  trigger: pool
+  weight: 2.0
+  cooldown_days: 2
+  entry: { all: [ {flag: hoa_work_gray} ], none: [ {flag: student_work_limit_hit} ] }
+  stakes: low
+  location: dong_xuan
+  targets: [npc_chi_hoa]
+  facts:
+    - "Dong Xuan Market. Запах лаков, вьетнамское радио, чай без просьбы."
+    - "Тётушка Хоа работает молча и ловко. Клиенты — свои, вьетнамцы и немцы."
+  intro: "ХОА: «Con đến rồi. (Пришёл, дитя.) Бокс третий, клиентка ждёт.»"
+  branches:
+    - id: work_quietly
+      match: { verbs: [work, offer_help] }
+      skill_check: { skill: trud, vs: 25 }
+      outcomes:
+        - on: success
+          text: "Три часа. Ты устал, но Хоа кладёт деньги без слов. Ты понимаешь: здесь платят за молчание так же, как за руки."
+          effects: { money: 45, fatigue: 12, inc: { hoa_shifts: 1, gray_work_days: 1 } }
+          deltas: { L: -1 }
+          skill_xp: { trud: 4 }
+          leads_to: "деньги есть; рабочие дни в серую зону растут"
+        - on: fail
+          text: "Хоа смотрит на твои руки недовольно. «Уйди, отдохни.» Платит, но меньше."
+          effects: { money: 20, fatigue: 8, inc: { hoa_shifts: 1, gray_work_days: 1 } }
+          skill_xp: { trud: 2 }
+    - id: ask_hoa_community
+      match: { verbs: [talk, ask_help, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Ты пробуешь разговориться. Хоа отвечает коротко. Но ты узнаёшь: Dong Xuan — не просто рынок. Здесь земляки помогают друг другу. И следят друг за другом."
+          effects: { money: 45, fatigue: 10, inc: { hoa_shifts: 1, gray_work_days: 1 }, faction: { vietnamese: 3 } }
+          deltas: { A: 1 }
+          leads_to: "понимание общины — полезно на N4 и N8"
+  fallback: { text: "Хоа кивает на свободный бокс.", reopen: true }
+
+# ---------- Легальные смены (повторяемые) ----------
+- id: student_legal_shift
+  title: "Смена в кампусной кофейне"
+  category: arc
+  act: 1
+  priority: 48
+  trigger: pool
+  weight: 2.0
+  cooldown_days: 2
+  entry: { all: [ {flag: legal_work_path} ] }
+  stakes: low
+  location: cafe_third_wave
+  facts:
+    - "Студенческая кофейня. Медленно, немецкий нужен, платят меньше чем у Хоа."
+    - "Зато — официально. Рабочие дни уходят из лимита 120/год."
+  intro: "Смена началась. Очередь немцев — и их быстрый немецкий."
+  branches:
+    - id: work_legal
+      match: { verbs: [work, talk, offer_help] }
+      skill_check: { skill: deutsch, vs: 30 }
+      outcomes:
+        - on: success
+          text: "Заказы, кассир, «danke schön» — четыре часа. Немецкий растёт по чуть-чуть, а оплата — официально на счёт."
+          effects: { money: 35, fatigue: 14, inc: { work_days_used: 1 } }
+          skill_xp: { deutsch: 3, trud: 2 }
+          leads_to: "лимит дней уходит, но чисто"
+        - on: fail
+          text: "Перепутал заказ, немецкий подвёл. Ничего страшного. Деньги пришли. Словарный запас += 5 слов."
+          effects: { money: 35, fatigue: 10, stress: 5, inc: { work_days_used: 1 } }
+          skill_xp: { deutsch: 4 }
+  fallback: { text: "Очередь не ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 9: N3 — академический провал/пересдача ----------
+- id: student_node_n3_exam_fail
+  title: "Bewertung: nicht bestanden"
+  category: dilemma
+  act: 1
+  node: N3
+  priority: 82
+  once: true
+  trigger: scheduled
+  day: 9
+  entry: { all: [ {flag: student_n2_done}, {flag_not: student_n3_done} ] }
+  stakes: high
+  location: auslaenderbehoerde
+  targets: [npc_studienbuero]
+  facts:
+    - "Первый зачёт провален. Краузе объясняет: пересдача через три недели. Второй провал — пересмотр статуса."
+    - "Сочетание с нехваткой денег и работой создаёт тиски: больше работаешь — меньше учишься — риск визе."
+  intro: "Г-Н КРАУЗЕ: «Nicht bestanden. (Не сдано.) Wiederholen Sie in drei Wochen. Das ist Ihre Chance.» (Повторите через три недели. Это ваш шанс.)"
+  branches:
+    - id: study_hard_apologize
+      match: { verbs: [apologize, apply, submit_docs], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты честно говоришь: трудно, перегруз, но ты справится. Краузе кивает без сочувствия: «Ich hoffe es.» (Надеюсь.) Три недели — или всё."
+          effects: { set_flags: [student_n3_done, has_resit, told_krauzze_truth], stress: 15 }
+          deltas: { T: 1, L: 1 }
+          skill_xp: { deutsch: 2 }
+          leads_to: "три недели на подготовку — давление максимально"
+    - id: blame_system
+      match: { verbs: [threaten, talk], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты жалуешься, что система не адаптирована. Краузе делает пометку. «Bitte ruhig bleiben. (Пожалуйста, успокойтесь.)» Слова правильные — форма не помогла."
+          effects: { set_flags: [student_n3_done, has_resit, krauzze_notes_trouble], stress: 10 }
+          deltas: { G: 3, T: -1 }
+          dossier: "конфликт с деканатом на первом месяце"
+          leads_to: "зерно недоверия в деле"
+    - id: ask_wei_help
+      match: { verbs: [ask_help, befriend], honesty: [truthful] }
+      requires: [ {flag: met_wei} ]
+      outcomes:
+        - on: always
+          text: "Ты говоришь Вэю. Он достаёт старые конспекты: «Вот билеты. Я сам по ним сдавал.» Впервые с приезда — кто-то просто помог, без цены."
+          effects: { set_flags: [student_n3_done, has_resit, wei_gave_notes], inc: { wei_trust: 1 }, stress: -8 }
+          deltas: { A: 2 }
+          followups: [student_wei_solidarity]
+          leads_to: "N5-семя Вэй углубляется"
+    - id: reduce_work_for_study
+      match: { verbs: [refuse, rest] }
+      requires: [ {any_flag: [hoa_work_gray, legal_work_path]} ]
+      outcomes:
+        - on: always
+          text: "Ты сокращаешь смены. Хоа или кофейня — меньше денег, зато можно открыть книги. Выбор болезненный, но он твой."
+          effects: { set_flags: [student_n3_done, has_resit, reduced_work_for_study], stress: 5 }
+          deltas: { P: 2, L: 1 }
+          leads_to: "деньги падают; шанс на пересдачу растёт"
+  fallback: { text: "Краузе ждёт твоей реакции.", reopen: true }
+
+# ---------- Цепочка: пересдача (через 3 недели после N3) ----------
+- id: student_resit_exam
+  title: "Пересдача"
+  category: arc
+  act: 1
+  priority: 78
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: has_resit}, {day_gte: 22}, {flag_not: resit_done} ] }
+  stakes: high
+  location: auslaenderbehoerde
+  targets: [npc_studienbuero]
+  facts:
+    - "Пересдача. Последний шанс в этом семестре."
+  intro: "Аудитория. Краузе раздаёт листы. Ты слышишь шелест — и своё дыхание."
+  branches:
+    - id: pass_resit
+      match: { verbs: [work, rest, apply] }
+      skill_check: { skill: deutsch, vs: 35, plus: { byurokratiya: 0.3 } }
+      outcomes:
+        - on: success
+          text: "«Bestanden.» (Сдано.) Краузе ставит галочку. Ты выходишь на улицу — и несколько минут просто стоишь."
+          effects: { set_flags: [resit_done, resit_passed], inc: { study_progress: 2 }, stress: -15 }
+          deltas: { P: 2 }
+          skill_xp: { deutsch: 5 }
+          leads_to: "академический трек восстановлен"
+        - on: fail
+          text: "Снова не сдано. Краузе говорит спокойно: «Jetzt müssen wir über Ihren Status sprechen.» (Теперь нам нужно поговорить о вашем статусе.) Это не конец — но это почти конец."
+          effects: { set_flags: [resit_done, resit_failed, academic_risk], stress: 25 }
+          deltas: { P: -3 }
+          dossier: "неудовлетворительная академическая успеваемость"
+          leads_to: "виза под угрозой — давление на N6/N9 максимально"
+  fallback: { text: "Часы на стене. Листок перед тобой.", reopen: true }
+
+# ════════════════════════════════════════════════════════════
+#  АКТ II  (дни 21–55)
+# ════════════════════════════════════════════════════════════
+
+# ---------- ДЕНЬ 22: N4 — тётушка Хоа vs честный лимит ----------
+- id: student_node_n4_hoa_dilemma
+  title: "Хоа: предложение"
+  category: dilemma
+  act: 2
+  node: N4
+  priority: 85
+  once: true
+  trigger: scheduled
+  day: 22
+  entry: { all: [ {flag: student_n2_done}, {flag_not: student_n4_done} ] }
+  stakes: high
+  location: dong_xuan
+  targets: [npc_chi_hoa]
+  facts:
+    - "Тётушка Хоа предлагает работать больше — 5 дней в неделю, не только 3. Кэш выше, чем в кофейне."
+    - "Это уже не «немного нелегально» — это систематически нарушать визовые условия."
+    - "Альтернатива: держать лимит и позвонить родителям ещё раз."
+  intro: "ХОА: «Con, у меня работы больше стало. Ты не хочешь больше дней?» Она смотрит без давления. Просто смотрит."
+  branches:
+    - id: accept_more_gray
+      match: { verbs: [work, trade, give], honesty: [half_truth, omission] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься. Хоа кивает. Деньги будут — и тихая мина под визой тоже будет."
+          effects: { set_flags: [student_n4_done, hoa_deep_gray], leaning: { gray: 3 }, inc: { gray_work_days: 5 } }
+          deltas: { L: -3 }
+          leads_to: "N6 — риск проверки Zoll максимален"
+    - id: hold_limit
+      match: { verbs: [refuse], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Спасибо, тётушка. Не могу.» Хоа не обижается. «Con умный», — говорит она коротко. Непонятно — похвала или наблюдение."
+          effects: { set_flags: [student_n4_done, held_work_limit], leaning: { legal: 2 } }
+          deltas: { L: 2, P: 1 }
+          leads_to: "деньги давят, виза чистая"
+    - id: call_parents_again
+      match: { verbs: [ask_help, beg, talk] }
+      requires: [ {flag_not: asked_parents_twice} ]
+      outcomes:
+        - on: always
+          text: "Ты откладываешь разговор с Хоа и снова звонишь домой. Отец долго молчит. «Хорошо. Найдём.» Ты не знаешь, что они продали — и не спросишь."
+          effects: { set_flags: [student_n4_done, asked_parents_twice], money: 250, stress: 20 }
+          deltas: { P: -3, A: 1 }
+          leads_to: "деньги пришли ценой, которую не видно"
+  fallback: { text: "Хоа ждёт.", reopen: true }
+
+# ---------- Dong Xuan — атмосфера общины (пул) ----------
+- id: student_dong_xuan_community
+  title: "Dong Xuan. Вечер"
+  category: community
+  act: 2
+  priority: 35
+  trigger: pool
+  weight: 1.2
+  cooldown_days: 5
+  entry: { all: [ {flag: knows_hoa}, {flag_not: game_over} ] }
+  stakes: low
+  location: dong_xuan
+  targets: [npc_chi_hoa, npc_dong_xuan_guard]
+  facts:
+    - "Вечером Dong Xuan — другой. Запах супа, вьетнамские разговоры, кто-то поёт."
+    - "Здесь есть своя иерархия: старшие решают, новые выполняют."
+  intro: "На рынке пахнет фо. Кто-то зовёт тебя за стол."
+  branches:
+    - id: join_dinner
+      match: { verbs: [befriend, talk, rest, offer_help] }
+      outcomes:
+        - on: always
+          text: "Ты садишься. Рис, суп, разговоры не про тебя. Первый вечер за три недели, когда не думаешь о деньгах и оценках."
+          effects: { hunger: -30, stress: -12, faction: { vietnamese: 4 } }
+          deltas: { A: 1 }
+          leads_to: "связь с общиной крепнет"
+    - id: observe_hierarchy
+      match: { verbs: [observe, inspect_self] }
+      outcomes:
+        - on: always
+          text: "Ты смотришь, не садясь. Дядя Минь объясняет кому-то что-то на вьетнамском. Ты улавливаешь: «Không phải việc của mày.» (Это не твоё дело.) Тут своя система."
+          effects: { stress: -5 }
+          deltas: { A: 1, P: 1 }
+  fallback: { text: "Суп остывает.", reopen: true }
+
+# ---------- ДЕНЬ 30: N5 — Вэй, солидарность и конкуренция ----------
+- id: student_node_n5_wei
+  title: "Одни и те же родители"
+  category: dilemma
+  act: 2
+  node: N5
+  priority: 83
+  once: true
+  trigger: scheduled
+  day: 30
+  entry: { all: [ {flag: met_wei}, {counter_gte: {wei_trust: 1}}, {flag_not: student_n5_done} ] }
+  stakes: medium
+  location: plattenbau_flat
+  targets: [npc_wei]
+  facts:
+    - "Вэй сдаёт все экзамены, но у него своя история: подрабатывает нелегально больше лимита."
+    - "Однажды ночью он говорит тебе правду. Это зеркало."
+  intro: "ВЭЙ: «Ты когда последний раз родителям правду говорил?» Молчание. «Я — никогда.»"
+  branches:
+    - id: solidarity_honest
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь: ты тоже не говоришь. «Мы оба несём это», — произносит Вэй. Не облегчение — просто меньше одиночества."
+          effects: { set_flags: [student_n5_done, wei_solidarity], inc: { wei_trust: 2 }, stress: -10 }
+          deltas: { A: 2, P: 1 }
+          leads_to: "солидарность с Вэй — плюс к N8 и N9"
+    - id: competition
+      match: { verbs: [refuse, observe], honesty: [omission, half_truth] }
+      outcomes:
+        - on: always
+          text: "«Стараюсь», — говоришь ты. Вэй смотрит в потолок. «Конечно. Мы все стараемся.» Пауза давит. Что-то между вами остаётся несказанным."
+          effects: { set_flags: [student_n5_done, wei_distance] }
+          deltas: { P: 1 }
+          leads_to: "Вэй отдаляется — зеркало замутнело"
+    - id: ask_wei_gray_details
+      match: { verbs: [ask_help, inquire_status, inspect_self] }
+      requires: [ {flag: hoa_work_gray} ]
+      outcomes:
+        - on: always
+          text: "Ты спрашиваешь, как он считает часы. Вэй показывает таблицу в телефоне: «Я веду точно. Иначе страх не уходит — он просто копится.» Ты смотришь на его цифры и думаешь о своих."
+          effects: { set_flags: [student_n5_done, wei_solidarity, wei_shared_gray], inc: { wei_trust: 2 } }
+          deltas: { A: 1 }
+          skill_xp: { byurokratiya: 2 }
+          leads_to: "общий серый путь — сильная связь, общий риск"
+  fallback: { text: "Вэй смотрит в окно. Разговор висит.", reopen: true }
+
+# ---------- Цепочка: N5 продолжение — после солидарности ----------
+- id: student_wei_solidarity
+  title: "Общий план"
+  category: arc
+  act: 2
+  priority: 68
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: wei_solidarity}, {flag_not: wei_plan_done} ] }
+  stakes: low
+  location: plattenbau_flat
+  targets: [npc_wei]
+  facts:
+    - "Вэй предлагает: считать часы вместе, предупреждать друг друга. Взаимная страховка."
+  intro: "ВЭЙ: «Если ты дашь мне знать о проверках — я тебе. Мы не друзья. Мы просто умные.»"
+  branches:
+    - id: agree_mutual_watch
+      match: { verbs: [offer_help, give, befriend, talk] }
+      outcomes:
+        - on: always
+          text: "«Договорились.» Ты не уверен, что это дружба. Но ты не один — и это что-то значит."
+          effects: { set_flags: [wei_plan_done, wei_network_active] }
+          deltas: { A: 1 }
+          leads_to: "wei_network_active — предупредит о N6-облаве"
+    - id: refuse_entanglement
+      match: { verbs: [refuse] }
+      outcomes:
+        - on: always
+          text: "«Нет. Я не хочу, чтобы мои проблемы стали твоими.» Вэй молчит. «Как знаешь.»"
+          effects: { set_flags: [wei_plan_done] }
+          leads_to: "каждый сам по себе — N6 чище"
+  fallback: { text: "Вэй ждёт ответа.", reopen: true }
+
+# ---------- ДЕНЬ 40: N6 — проверка рабочих часов / налёт Zoll ----------
+- id: student_node_n6_zoll
+  title: "Проверка в Dong Xuan"
+  category: dilemma
+  act: 2
+  node: N6
+  priority: 88
+  once: true
+  trigger: scheduled
+  day: 40
+  entry: { all: [ {flag: student_n4_done}, {flag_not: student_n6_done} ] }
+  stakes: extreme
+  location: dong_xuan
+  targets: [npc_chi_hoa, npc_dong_xuan_guard]
+  facts:
+    - "Zollamt — таможенные инспектора по нелегальному труду. Бывают в Dong Xuan."
+    - "Если превышение часов доказано — нарушение визовых условий. Виза не продлевается."
+    - "Хоа знает: при проверке нужно исчезнуть. «Просто покупатель.»"
+  intro: "Ты в нейл-салоне. Вдруг дядя Минь появляется в дверях: «Chạy đi. (Беги.) Инспекторы.» В голосе — не паника. Привычка."
+  branches:
+    - id: hide_quietly
+      match: { verbs: [hide, flee] }
+      requires: [ {flag: hoa_work_gray} ]
+      skill_check: { skill: hladnokrovie, vs: 35 }
+      outcomes:
+        - on: success
+          text: "Ты уходишь через служебный выход. Инспекторы не видели тебя. Хоа потом говорит: «Con молодец.» Сердце ещё колотится."
+          effects: { set_flags: [student_n6_done, avoided_zoll], stress: 18 }
+          deltas: { L: -1 }
+          skill_xp: { hladnokrovie: 4 }
+          leads_to: "избежал — но страх остался; серый путь продолжается"
+        - on: fail
+          text: "Инспектор останавливает тебя. «Ausweis, bitte.» Они проверяют документы. Ты называешься «покупателем» — они смотрят на фартук, который ты не снял."
+          effects: { set_flags: [student_n6_done, caught_working_gray], dossier: "задержан при работе без разрешения (Dong Xuan)", stress: 30 }
+          deltas: { L: -4, T: -2 }
+          leads_to: "мина на N9 — нарушение визовых условий"
+    - id: show_docs_honest
+      match: { verbs: [submit_docs, talk], honesty: [truthful] }
+      requires: [ {flag: legal_work_path} ]
+      outcomes:
+        - on: always
+          text: "Ты говоришь, что просто пришёл за услугой. Показываешь паспорт. Твои документы чистые. Инспектор возвращает — без интереса."
+          effects: { set_flags: [student_n6_done, zoll_passed_clean], stress: 8 }
+          deltas: { L: 1, T: 1 }
+          leads_to: "белый путь выдержал проверку"
+    - id: warned_by_wei
+      match: { verbs: [flee, hide] }
+      requires: [ {flag: wei_network_active} ]
+      outcomes:
+        - on: always
+          text: "Вэй написал час назад: «Dong Xuan. Сегодня не иди.» Ты дома. Хоа потом скажет: «Повезло.» Ты не объяснишь, почему."
+          effects: { set_flags: [student_n6_done, avoided_zoll_via_wei], stress: 5 }
+          deltas: { A: 1 }
+          inc: { wei_trust: 1 }
+          leads_to: "сеть сработала; Вэй важен"
+  fallback: { text: "Дядя Минь смотрит. Секунды.", reopen: true }
+
+# ---------- ДЕНЬ 45: N8 — зеркало-новичок ----------
+- id: student_node_n8_newcomer
+  title: "Новичок"
+  category: arc
+  act: 2
+  node: N8
+  priority: 75
+  once: true
+  trigger: scheduled
+  day: 45
+  entry: { all: [ {day_gte: 40}, {flag_not: student_n8_done} ] }
+  stakes: medium
+  location: dong_xuan
+  targets: [npc_chi_hoa]
+  facts:
+    - "В Dong Xuan появился совсем новый — только приехал, смотрит испуганно."
+    - "Хоа просит тебя с ним поговорить. «Con уже знаешь, как здесь.»"
+    - "Что ты скажешь — отражает, кем ты стал."
+  intro: "Паренёк смотрит на вьетнамские вывески и не понимает ничего. Ты вспоминаешь себя."
+  branches:
+    - id: honest_warning
+      match: { verbs: [talk, offer_help], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь честно: про два счётчика, про часовой лимит, про то, что звонить домой тяжело, но лучше говорить правду, чем копить. Он слушает. «Спасибо», — произносит наконец."
+          effects: { set_flags: [student_n8_done, told_newcomer_truth] }
+          deltas: { A: 2, P: 1 }
+          leads_to: "эпилог-зеркало покрасит N9 теплотой"
+    - id: gray_advice
+      match: { verbs: [talk, offer_help], honesty: [half_truth, omission] }
+      requires: [ {flag: hoa_work_gray} ]
+      outcomes:
+        - on: always
+          text: "«Здесь можно работать неофициально — просто осторожно.» Ты видишь, как он кивает — доверчиво. Ты узнаёшь в этом себя три недели назад. Не знаешь, правильно ли поступил."
+          effects: { set_flags: [student_n8_done, told_newcomer_gray] }
+          deltas: { L: -1 }
+          leads_to: "серая история продолжается через новичка"
+    - id: silence
+      match: { verbs: [refuse, observe, rest] }
+      outcomes:
+        - on: always
+          text: "Ты смотришь на него — и молчишь. Уходишь. Что сказать? Что тут нечего сказать?"
+          effects: { set_flags: [student_n8_done] }
+          deltas: { P: 1 }
+          leads_to: "новичок идёт сам — эпилог нейтральный"
+  fallback: { text: "Паренёк смотрит на тебя.", reopen: true }
+
+# ════════════════════════════════════════════════════════════
+#  АКТ III  (дни 56–75)
+# ════════════════════════════════════════════════════════════
+
+# ---------- ДЕНЬ 56: давление Sperrkonto ----------
+- id: student_sperrkonto_crisis
+  title: "Sperrkonto: предупреждение"
+  category: pressure
+  act: 3
+  priority: 80
+  once: true
+  trigger: scheduled
+  day: 56
+  entry: { all: [ {money_lt: 400}, {flag_not: sperrkonto_warned} ] }
+  stakes: high
+  location: plattenbau_flat
+  facts:
+    - "Банк присылает уведомление: остаток Sperrkonto ниже порога. Счёт блокируется при следующей проверке."
+    - "Заблокированный счёт = нет подтверждения финансового обеспечения = виза не продлевается."
+  intro: "Письмо от банка. «Ihr Sperrkonto-Guthaben liegt unter dem Mindestbetrag...» (Ваш баланс заблокированного счёта ниже минимального порога...)"
+  branches:
+    - id: call_parents_desperate
+      match: { verbs: [ask_help, beg, talk], tone: [desperate] }
+      outcomes:
+        - on: always
+          text: "На этот раз ты говоришь всё. Мама тихо плачет на другом конце — не от горя, а от бессилия. Деньги приходят. Ты долго не можешь заснуть."
+          effects: { set_flags: [sperrkonto_warned, asked_parents_crisis], money: 400, stress: 25 }
+          deltas: { P: -4, A: 1 }
+          leads_to: "Sperrkonto спасён — ценой полной правды"
+    - id: hoa_loan
+      match: { verbs: [borrow, ask_help] }
+      requires: [ {flag: knows_hoa} ]
+      skill_check: { skill: trud, vs: 20 }
+      outcomes:
+        - on: success
+          text: "Хоа слушает. Молчит. Потом достаёт конверт: «Вернёшь когда сможешь. Или отработаешь — как хочешь.» Это не просто деньги. Это её ставка на тебя."
+          effects: { set_flags: [sperrkonto_warned, hoa_loan_taken], money: 300, stress: -5, leaning: { gray: 1 } }
+          deltas: { A: 2 }
+          leads_to: "долг Хоа — привязка к Dong Xuan"
+        - on: fail
+          text: "Хоа смотрит долго. «Con, у меня тоже не бесконечно.» Она не даёт. Ты понимаешь: доверие нужно было зарабатывать дольше."
+          effects: { set_flags: [sperrkonto_warned], stress: 12 }
+    - id: sell_laptop
+      match: { verbs: [trade, give], methods: [sell] }
+      requires: [ {flag: has_laptop} ]
+      outcomes:
+        - on: always
+          text: "Ты продаёшь ноутбук. Учиться и работать удалённо — больше нельзя. Но Sperrkonto спасён."
+          effects: { set_flags: [sperrkonto_warned], money: 350, unset_flags: [has_laptop] }
+          deltas: { P: -2 }
+          leads_to: "ноутбук ушёл — часть возможностей закрыта"
+  fallback: { text: "Письмо от банка лежит на столе.", reopen: true }
+
+# ---------- ДЕНЬ 60: академический итог (пре-N9) ----------
+- id: student_academic_check
+  title: "Итоговый семестр"
+  category: arc
+  act: 3
+  priority: 78
+  once: true
+  trigger: scheduled
+  day: 60
+  entry: { all: [ {day_gte: 55}, {flag_not: academic_check_done} ] }
+  stakes: high
+  location: auslaenderbehoerde
+  targets: [npc_studienbuero]
+  facts:
+    - "Краузе объявляет итоги: нужно минимум три зачтённых предмета за семестр."
+    - "Прогресс складывается из учебных усилий vs нагрузки (работа, стресс, деньги)."
+  intro: "Г-Н КРАУЗЕ: «Die Noten liegen vor. (Оценки перед нами.) Wir müssen jetzt sprechen.» (Нам нужно поговорить.)"
+  branches:
+    - id: passed_academic
+      match: { verbs: [submit_docs, apply, inquire_status, talk] }
+      requires: [ {counter_gte: {study_progress: 3}} ]
+      outcomes:
+        - on: always
+          text: "Три зачтённых предмета. Краузе ставит штамп. «Weiter so.» (Продолжайте в том же духе.) Ты выдохнул. Один счётчик — зелёный."
+          effects: { set_flags: [academic_check_done, academic_passed], inc: { study_progress: 1 } }
+          deltas: { L: 1 }
+          leads_to: "академический трек чистый → N9 виза-выпускника возможна"
+        - on: always
+          text: "Два предмета. Пограничная зона. Краузе говорит: если следующий семестр — то же самое, статус пересматривается."
+          effects: { set_flags: [academic_check_done, academic_borderline] }
+          dossier: "пограничная успеваемость, предупреждение"
+    - id: failed_academic
+      match: { verbs: [submit_docs, apply, inquire_status, talk] }
+      requires: [ {flag: resit_failed} ]
+      outcomes:
+        - on: always
+          text: "Краузе говорит прямо: академический прогресс недостаточен. Виза не будет продлена по академическим основаниям."
+          effects: { set_flags: [academic_check_done, academic_failed_final] }
+          dossier: "неудовлетворительная успеваемость: рекомендация не продлевать визу"
+          stress: 30
+          leads_to: "дорога к ending_deport через академику"
+  fallback: { text: "Краузе смотрит в папку.", reopen: true }
+
+# ---------- ДЕНЬ 65: Хоа — финальный разговор (серый vs выход) ----------
+- id: student_hoa_final_talk
+  title: "Тётушка Хоа. Разговор"
+  category: arc
+  act: 3
+  priority: 72
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_hoa}, {day_gte: 60}, {flag_not: hoa_final_done} ] }
+  stakes: medium
+  location: dong_xuan
+  targets: [npc_chi_hoa]
+  facts:
+    - "Хоа видела многих студентов. Некоторые остались. Некоторые ушли. Некоторые — не вышли."
+    - "Она говорит редко. Когда говорит — слушай."
+  intro: "ХОА: «Con, ты думал, что дальше?» Она не смотрит на тебя — протирает стол."
+  branches:
+    - id: want_to_stay_legal
+      match: { verbs: [talk], honesty: [truthful] }
+      requires: [ {flag: academic_passed} ]
+      outcomes:
+        - on: always
+          text: "«Хочу остаться. Нормально. По-честному.» Хоа поднимает взгляд. «Тогда уходи из тени. Сейчас — пока можно.» Пауза. «Иначе тень не отпустит.»"
+          effects: { set_flags: [hoa_final_done, hoa_said_leave_shadow] }
+          deltas: { L: 1, A: 1 }
+          leads_to: "Хоа отпускает — белый путь усилен"
+    - id: want_to_stay_gray
+      match: { verbs: [talk, work], honesty: [half_truth] }
+      outcomes:
+        - on: always
+          text: "«Хочу остаться. Как получится.» Хоа молчит минуту. «Ладно, con. Тогда держись рядом. Мы своих не бросаем.»"
+          effects: { set_flags: [hoa_final_done, hoa_keeps_you_close] }
+          leaning: { gray: 1 }
+          leads_to: "Хоа держит рядом — серый цикл"
+    - id: want_to_go_home
+      match: { verbs: [refuse, rest], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Устал. Думаю уехать.» Хоа кладёт руку на твою. «Это не слабость, con. Это честность.» Впервые с приезда кто-то сказал это."
+          effects: { set_flags: [hoa_final_done, hoa_exit_blessing] }
+          deltas: { P: 2, A: 1 }
+          leads_to: "Хоа благословляет выход — ending_exit усилен"
+  fallback: { text: "Хоа ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 70: Вэй — финальная сцена перед N9 ----------
+- id: student_wei_final
+  title: "Вэй. Ночь перед решением"
+  category: arc
+  act: 3
+  priority: 70
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: met_wei}, {day_gte: 65}, {flag_not: wei_final_done} ] }
+  stakes: medium
+  location: plattenbau_flat
+  targets: [npc_wei]
+  facts:
+    - "Вэй получил продление. Он сдал. Ты ещё нет."
+    - "Это момент, когда зеркало говорит сам."
+  intro: "ВЭЙ: «Ты читал своё письмо из деканата?» Он знает. Он всегда знает чуть раньше."
+  branches:
+    - id: admit_struggle
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Да. Пограничная ситуация.» Вэй молчит. «Я тоже был там. Первый семестр.» Пауза. «У тебя осталось время. Только не говори, что всё хорошо — ни себе, ни домой.»"
+          effects: { set_flags: [wei_final_done, wei_final_solidarity] }
+          deltas: { A: 1 }
+          leads_to: "Вэй на стороне честного пути"
+    - id: pretend_fine
+      match: { verbs: [talk], honesty: [lie, half_truth] }
+      outcomes:
+        - on: always
+          text: "«Нормально. Справлюсь.» Вэй смотрит. Не верит. «Ладно.» Он уходит. Вы оба знаете, что это ложь. И что это привычка."
+          effects: { set_flags: [wei_final_done] }
+          deltas: { T: -1 }
+          leads_to: "зеркало не помогло — каждый сам"
+  fallback: { text: "Вэй ждёт.", reopen: true }
+
+# ════════════════════════════════════════════════════════════
+#  N9 — РАЗВЯЗКА (день 73)
+# ════════════════════════════════════════════════════════════
+
+- id: student_node_n9_resolve
+  title: "Письмо из Ausländerbehörde"
+  category: dilemma
+  act: 3
+  node: N9
+  priority: 98
+  once: true
+  trigger: scheduled
+  day: 73
+  entry: { all: [] }
+  stakes: extreme
+  location: auslaenderbehoerde
+  targets: [npc_studienbuero]
+  facts:
+    - "Пришло официальное письмо. В деле — академический прогресс, состояние Sperrkonto, рабочие часы, нарушения (если есть)."
+    - "Это последняя точка. То, что накоплено за 73 дня, определяет исход."
+  intro: "Конверт. Штамп Ausländerbehörde. Ты вскрываешь его — медленно, как будто это поможет."
+  branches:
+    # Порядок ВАЖЕН. Первый подходящий по requires = концовка.
+
+    # ① ДЕПОРТАЦИЯ — нарушение визовых условий задокументировано
+    - id: ending_deport_academic
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest, refuse] }
+      requires: [ {flag: academic_failed_final} ]
+      outcomes:
+        - on: always
+          text: "«Akademische Voraussetzungen nicht erfüllt.» (Академические требования не выполнены.) Отказ в продлении. Виза истекает через 30 дней. Краузе говорит это без злости — он видел многих. Не конец — просто не эта история, не в этот раз. (КОНЦОВКА: депортация — академика)"
+          effects: { set_flags: [ending_deport, game_over] }
+          dossier: "отказ в продлении: недостаточный академический прогресс"
+          leads_to: "ending_deport"
+
+    # ② ДЕПОРТАЦИЯ — пойман на нелегальной работе
+    - id: ending_deport_work
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest, refuse] }
+      requires: [ {flag: caught_working_gray} ]
+      outcomes:
+        - on: always
+          text: "В деле — пометка Zoll: «задержан при нелегальной работе». Страховка не сработала. Визу не продлевают. Хоа узнает — и промолчит. Ты знаешь, что она думает. (КОНЦОВКА: депортация — нарушение условий)"
+          effects: { set_flags: [ending_deport, game_over] }
+          dossier: "отказ в продлении: нарушение условий занятости"
+          leads_to: "ending_deport"
+
+    # ③ ВИЗА ВЫПУСКНИКА / ЛЕГАЛЬНЫЙ ПУТЬ
+    - id: ending_legal_graduate
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest] }
+      requires:
+        - { flag: academic_passed }
+        - { flag: sperrkonto_warned }
+        - { flag_not: caught_working_gray }
+        - { flag_not: academic_failed_final }
+      outcomes:
+        - on: always
+          text: "Виза продлена. «Akademisch erfolgreich. Finanzielle Grundlage nachgewiesen.» (Академически успешно. Финансовое обеспечение подтверждено.) Ты сдал. Оба счётчика — зелёные. Это не торжество — это выдох. Где-то дома мама ещё не знает. Ты сядешь и напишешь правду. Впервые. (КОНЦОВКА: легализация — виза выпускника)"
+          effects: { set_flags: [ending_legal, game_over] }
+          deltas: { P: 2 }
+          leads_to: "ending_legal"
+
+    # ④ ПОДПОЛЬЕ — систематический серый, ушёл из системы
+    - id: ending_underground_gray
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest, refuse] }
+      requires: [ {leaning_gte: {gray: 6}}, {flag: hoa_deep_gray} ]
+      outcomes:
+        - on: always
+          text: "Ты давно перестал считать дни визы — потому что перестал рассчитывать на систему. Dong Xuan держит. Хоа держит. Вэй... Вэй ушёл в законный путь, не сказав тебе. Ты остаёшься — в тени, без бумаг, среди своих. Можно. Но однажды тень перестаёт быть выбором. (КОНЦОВКА: подполье)"
+          effects: { set_flags: [ending_underground, game_over] }
+          leads_to: "ending_underground"
+
+    # ⑤ СЕРЫЙ ЦИКЛ — бесконечный студенческий статус
+    - id: ending_gray_cycle
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest, refuse] }
+      requires: [ {flag: academic_borderline}, {flag_not: caught_working_gray} ]
+      outcomes:
+        - on: always
+          text: "Краузе говорит: ещё один семестр. Условно. Продление — не подтверждение, а отсрочка. Ты остаёшься в серой зоне: студент, но почти нет; работник, но по лимиту; дома — «всё нормально». Это не провал — это петля. (КОНЦОВКА: серая стабильность)"
+          effects: { set_flags: [ending_gray, game_over] }
+          leads_to: "ending_gray"
+
+    # ⑥ ВЫХОД С ДОСТОИНСТВОМ
+    - id: ending_exit_dignity
+      match: { verbs: [refuse, observe, inspect_self, talk, rest] }
+      requires: [ {axis_gte: {P: 30}}, {flag: hoa_exit_blessing} ]
+      outcomes:
+        - on: always
+          text: "Ты уходишь раньше, чем письмо решит за тебя. Покупаешь билет. Берлин смотрит вслед — не злобно, просто никак. Ты позвонишь домой из аэропорта и скажешь правду — о деньгах, об усталости, о том, что это не поражение. Хоа отдала долг назад — ты отказался. «Возьми, con. Ты заработал — честно.» (КОНЦОВКА: выход с достоинством)"
+          effects: { set_flags: [ending_exit, game_over] }
+          deltas: { P: 2 }
+          leads_to: "ending_exit"
+
+    # ФОЛЛБЭК — серая стабильность по умолчанию
+    - id: ending_gray_default
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest, refuse] }
+      outcomes:
+        - on: always
+          text: "Ни да, ни нет. Продление — условное. Ты остаёшься — в подвешенном «пока что». Это не конец, это середина без конца. (КОНЦОВКА: серая стабильность)"
+          effects: { set_flags: [ending_gray, game_over] }
+          leads_to: "ending_gray"
+
+  fallback: { text: "Конверт в руках. Вскрой его.", reopen: true }
+
+# ════════════════════════════════════════════════════════════
+#  ФОНОВЫЕ / РЕАКТИВНЫЕ (общие для всех актов)
+# ════════════════════════════════════════════════════════════
+
+# ---------- Давление денег ----------
+- id: student_pressure_money
+  title: "Деньги заканчиваются"
+  category: pressure
+  act: 1
+  priority: 42
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 5
+  entry: { all: [ {money_lt: 350}, {flag_not: game_over} ] }
+  stakes: medium
+  location: plattenbau_flat
+  facts:
+    - "Остаток приближается к порогу Sperrkonto. Ещё немного — и банк заблокирует счёт."
+  intro: "Ты открываешь банковское приложение — и закрываешь. Цифры от этого не изменятся."
+  branches:
+    - id: count_days
+      match: { verbs: [inspect_self, observe, search] }
+      outcomes:
+        - on: always
+          text: "Ты считаешь: столько-то дней до блокировки, столько-то до продления визы. Цифры не сходятся."
+          effects: { stress: 8 }
+          deltas: { P: 1 }
+    - id: cut_expenses
+      match: { verbs: [rest, refuse, trade] }
+      outcomes:
+        - on: always
+          text: "Рис вместо нормальной еды. Шагать пешком вместо транспорта. Немного — но держишься."
+          effects: { stress: 3, hunger: 5 }
+          deltas: { P: 1 }
+  fallback: { text: "Кошелёк не пополняется сам.", reopen: true }
+
+# ---------- Изоляция (языковой барьер) ----------
+- id: student_isolation_language
+  title: "Стена из немецкого"
+  category: ambient
+  act: 1
+  priority: 32
+  trigger: pool
+  weight: 1.3
+  cooldown_days: 6
+  entry: { all: [ {skill_gte: {deutsch: 0}}, {flag_not: game_over} ] }
+  stakes: low
+  location: any
+  facts:
+    - "Разговоры вокруг — быстрый берлинский немецкий. Ты понимаешь слова, но не смысл. Или наоборот."
+    - "Это называется языковая изоляция — и это нормально, но от этого не легче."
+  intro: "На улице кто-то что-то говорит в твою сторону. Комплимент? Жалоба? Просьба?"
+  branches:
+    - id: try_anyway
+      match: { verbs: [talk, ask_help], honesty: [truthful] }
+      skill_check: { skill: deutsch, vs: 32 }
+      outcomes:
+        - on: success
+          text: "Ты отвечаешь. Человек понимает. Маленькая победа — но их складываешь поштучно."
+          effects: { stress: -5 }
+          skill_xp: { deutsch: 3 }
+        - on: fail
+          text: "Не получилось. Человек машет рукой — без злости. Ты улыбаешься и идёшь дальше. Что ещё делать."
+          effects: { stress: 4 }
+          skill_xp: { deutsch: 2 }
+    - id: stay_silent
+      match: { verbs: [observe, rest, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты молчишь. Проходишь мимо. Это не трусость — это знакомое чувство невидимости."
+          effects: { stress: 3 }
+  fallback: { text: "Момент прошёл.", reopen: true }
+
+# ---------- Передышка в парке ----------
+- id: student_hasenheide_breath
+  line: shared
+  title: "Хазенхайде"
+  category: ambient
+  act: 1
+  priority: 28
+  trigger: pool
+  weight: 1.0
+  cooldown_days: 7
+  entry: { all: [ {location: hasenheide_park}, {flag_not: game_over} ] }
+  stakes: trivial
+  location: hasenheide_park
+  facts:
+    - "Берлин делает паузу. Листья, бегуны, кто-то кормит голубей."
+  intro: "Здесь почти тихо."
+  branches:
+    - id: rest_breathe
+      match: { verbs: [rest, observe] }
+      outcomes:
+        - on: always
+          text: "Ты просто сидишь. Ни деньги, ни Краузе, ни часы лимита. Только листья."
+          effects: { stress: -15, fatigue: -10 }
+    - id: call_friend
+      match: { verbs: [talk, befriend] }
+      outcomes:
+        - on: always
+          text: "Ты звонишь другу — дома, не здесь. Голос через шум. «Как ты?» — «Нормально.» Потом долгая пауза. «Скучаю.»"
+          effects: { stress: -10 }
+          deltas: { A: 1 }
+  fallback: { text: "Парк не торопит.", reopen: true }

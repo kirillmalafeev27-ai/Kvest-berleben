@@ -1,0 +1,48 @@
+# NPC-карточки линии «Студент».
+# Narrator использует register/tics/languages для стилизации реплик; axes_self — для
+# согласованности поведения. Дизайн-основа: design/09_personazhi.md §Vietnamese/Chinese.
+
+npcs:
+  npc_chi_hoa:
+    name: "Тётушка Хоа"
+    faction: vietnamese
+    nationality: вьетнамка
+    axes_self: { G: -10, T: -10, A: 20, L: -30, P: 35 }
+    languages: [vi, de_broken, zh, en]
+    register: "деловитая теплота, короткие фразы, всегда занята; называет «con» (дитя); вьетнамский вперемешку"
+    tics: ["Làm đi con (иди работай, дитя)", "здесь так — сначала делаешь, потом спрашиваешь", "Dong Xuan всё видит"]
+    likes: [hard_work, loyalty, discretion, family_honor]
+    dislikes: [police, questions, laziness, blamers]
+
+  npc_wei:
+    name: "Вэй"
+    faction: chinese
+    nationality: китаец
+    axes_self: { G: 0, T: 20, A: -10, L: 10, P: 20 }
+    languages: [zh, de, en]
+    register: "точный, немного формальный, иногда горький; конкурент и зеркало; «мы одинаковые, но об этом не говорят»"
+    tics: ["родители не знают", "у меня норма по часам — у тебя?", "это называется выживание"]
+    likes: [honesty_between_peers, solidarity, shared_pressure]
+    dislikes: [pretending_its_fine, betrayal, complaining_without_acting]
+
+  npc_studienbuero:
+    name: "Г-н Краузе"
+    faction: clerks
+    nationality: немец
+    axes_self: { G: 0, T: 25, A: 0, L: 40, P: 0 }
+    languages: [de]
+    register: "процедурный, не злой; академический немецкий; «всё должно быть задокументировано»"
+    tics: ["Laut Prüfungsordnung...", "das muss ich prüfen", "ohne Nachweis geht das leider nicht"]
+    likes: [prepared_students, punctuality, honest_communication]
+    dislikes: [excuses, missing_deadlines, shouting]
+
+  npc_dong_xuan_guard:
+    name: "Дядя Минь"
+    faction: vietnamese
+    nationality: вьетнамец
+    axes_self: { G: 10, T: -20, A: 15, L: -20, P: 10 }
+    languages: [vi, de_broken]
+    register: "молчаливый, оценивающий; за земляка заступится, чужому не доверяет; «ты чей?»"
+    tics: ["ты чей?", "Dong Xuan — не для туристов", "Хоа знает?"]
+    likes: [community_loyalty, paying_back, vietnam_roots]
+    dislikes: [strangers_prying, betraying_community, police_attention]

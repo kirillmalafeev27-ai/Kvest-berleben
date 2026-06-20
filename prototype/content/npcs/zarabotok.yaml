@@ -1,0 +1,44 @@
+npcs:
+  npc_janusz:
+    name: "Януш"
+    faction: east_european_bosses
+    nationality: поляк
+    axes_self: { G: 20, T: -15, A: 10, L: -30, P: 25 }
+    languages: [pl, de_broken, ru_minimal]
+    register: "польский с немецкими вставками, начальник-посредник; строгость с редкими проблесками человечности"
+    tics: ["Słuchaj (слушай)", "tak jest (вот именно)", "без вопросов — работаешь", "я тут не благотворительность"]
+    likes: [hard_work, loyalty, paying_debts, no_questions]
+    dislikes: [weakness, demands, crying, complaining]
+
+  npc_priest_polish:
+    name: "Ксёндз Марек"
+    faction: polish_community
+    nationality: поляк
+    axes_self: { G: 0, T: 35, A: 40, L: 20, P: 30 }
+    languages: [pl, de, ru_minimal]
+    register: "мягкий, не осуждающий; польские вставки с переводом; говорит медленно, весомо"
+    tics: ["Bóg widzi (Бог видит)", "не судить — помогать", "здесь ты человек, а не рабочая сила"]
+    likes: [honesty, community, confession, dignity, asking_for_help]
+    dislikes: [exploitation, silence_from_shame, violence]
+
+  npc_zemlyak:
+    name: "Войтек"
+    faction: east_european_workers
+    nationality: поляк
+    axes_self: { G: 10, T: 10, A: 5, L: -10, P: 20 }
+    languages: [pl, de_broken]
+    register: "говорит кратко, сухо, устал; иногда прорывается горькая ирония; «brat (брат)»"
+    tics: ["brat, это Берлин, не Краков", "терпи — скоро домой", "Janusze są wszędzie (Янушей везде)"]
+    likes: [solidarity, sharing_food, honesty, humor]
+    dislikes: [snitching, pretending_everything_is_fine, being_exploited_silently]
+
+  npc_zoll_officer:
+    name: "Офицер Zoll"
+    faction: clerks
+    nationality: немец
+    axes_self: { G: 0, T: 20, A: 0, L: 50, P: 0 }
+    languages: [de]
+    register: "процедурный, без ненависти и без тепла; называет номер параграфа, не имя"
+    tics: ["Personalausweis, bitte", "Arbeitsvertrag liegt vor?", "Das wird protokolliert"]
+    likes: [documents, cooperation, order]
+    dislikes: [running, fake_docs, aggression]

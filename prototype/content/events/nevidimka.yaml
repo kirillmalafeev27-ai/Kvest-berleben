@@ -1,0 +1,828 @@
+# События линии «Невидимка», все акты (N1–N9 + наполнение).
+# КАНОН: design/02_magistralnye_linii.md §2.7; тон: design/08 §8.4.
+# Герой — западноафриканец ~27, без статуса; старт: storefront_church, 20 €, undocumented.
+# Таймер «тень» — постоянная угроза, не срок; засвеченность = счётчик exposed.
+# Гард-рейлы: профилирование системно (усталость/процедура/профиль), не карикатура;
+#   церковь — безусловная, искренняя; полиция процедурна; достоинство героя важнее жалости.
+
+events:
+
+# ============================================================
+# АКТ I — ПЕРВЫЕ ДНИNЫ: ОРИЕНТАЦИЯ В ТЕНИ
+# ============================================================
+
+# ---------- ДЕНЬ 1: СТАРТ ----------
+- id: nevidimka_arrival
+  title: "Первый рассвет"
+  category: arc
+  act: 1
+  priority: 100
+  once: true
+  trigger: scheduled
+  day: 1
+  entry: { all: [ {flag_not: nevidimka_started} ] }
+  stakes: trivial
+  location: storefront_church
+  targets: [npc_pastor_emmanuel]
+  facts:
+    - "Ты в церкви — storefront, бывший магазин, Веддинг. Пластиковые стулья, запах кофе и ткани."
+    - "При тебе: 20 €, без документов, без адреса, без статуса. Таймер 'тень' отсчитывает не дни до срока — а дни до момента, когда тебя найдут."
+    - "Пастор Эммануэль — первый, кто смотрит на тебя, а не сквозь тебя."
+    - "Kwame — земляк, уже год здесь. Он снаружи, курит. Он знает, как это работает."
+  intro: "ПАСТОР ЭММАНУЭЛЬ: «Brother. You look like you need a chair and something warm. No questions — come in.» (Брат. Похоже, тебе нужны стул и что-то горячее. Без вопросов — заходи.)"
+  branches:
+    - id: enter_church
+      match: { verbs: [talk, rest, observe, ask_help, move] }
+      outcomes:
+        - on: always
+          text: "Ты входишь. Акуа ставит перед тобой стакан чая. Эммануэль не спрашивает имени, документов, истории. Просто: есть место на полу на эту ночь. Ты впервые за долгое время выдыхаешь."
+          effects: { set_flags: [nevidimka_started, met_pastor, church_safe], hunger: -20, stress: -15 }
+          leads_to: "церковь — безопасная база; встреча с Кваме на следующий день"
+    - id: stay_outside
+      match: { verbs: [refuse, hide, flee] }
+      outcomes:
+        - on: always
+          text: "Ты остаёшься снаружи. Ночь холодная. Кваме оглядывается: «Your call, man. Door's open.» (Твоё дело. Дверь открыта.) Ты знаешь, где найти убежище — если решишься."
+          effects: { set_flags: [nevidimka_started], stress: 8 }
+          leads_to: "можно вернуться к пастору позже"
+  fallback: { text: "Эммануэль ждёт. Дверь открыта.", reopen: true }
+
+# ---------- ДЕНЬ 2: ВСТРЕЧА С КВАМЕ ----------
+- id: nevidimka_kwame_intro
+  title: "Человек, который знает"
+  category: arc
+  act: 1
+  priority: 90
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: nevidimka_started}, {flag_not: met_kwame} ] }
+  stakes: low
+  location: storefront_church
+  targets: [npc_kwame]
+  facts:
+    - "Кваме — из Ганы, год в Берлине, Duldung истёк полгода назад. Знает районы, знает риски."
+    - "Он не проводник в криминал — он просто реалист, который хочет, чтобы ты выжил."
+    - "Главный урок Кваме: видимость — враг. Чем меньше замечают, тем лучше."
+  intro: "КВАМЕ: «You're new. Don't go to Görlitzer, don't go to Hasenheide alone at night. They don't need a reason — your face is the reason.» (Ты новенький. Не ходи в Гёрлитцер, не ходи один в Хазенхайде ночью. Им не нужна причина — твоё лицо и есть причина.)"
+  branches:
+    - id: listen_kwame
+      match: { verbs: [talk, ask_help, observe, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Кваме объясняет просто: легальная работа закрыта без статуса. Остаётся чёрный рынок — уборка, стройка, разгрузка. Платят кэшем, без вопросов. Но и без защиты. «I'm not saying it's good. I'm saying it's what there is.» (Не говорю, что это хорошо. Говорю — другого нет.)"
+          effects: { set_flags: [met_kwame, kwame_advice_heard], leaning: { gray: 1 } }
+          deltas: { T: 1 }
+          leads_to: "Кваме открывает путь к теневому заработку; пастор — к легальному"
+    - id: push_back
+      match: { verbs: [refuse, persuade, talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь: должен быть способ. Кваме смотрит на тебя без насмешки: «There is. It's called 'get caught and hope for mercy'. I tried it.» Шрам у него на запястье — от наручника, не от драки."
+          effects: { set_flags: [met_kwame] }
+          deltas: { P: 1, T: 1 }
+          leads_to: "Кваме не закрывается — уважает упрямство"
+  fallback: { text: "Кваме докуривает, ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 3: N1 — ПЕРВЫЙ КОНТАКТ С РИСКОМ ЗАСВЕЧИВАНИЯ ----------
+- id: nevidimka_node_exposure
+  title: "Рутинная проверка"
+  category: dilemma
+  act: 1
+  node: N1
+  priority: 85
+  once: true
+  trigger: scheduled
+  day: 3
+  entry: { all: [ {flag: nevidimka_started}, {flag_not: n1_done} ] }
+  stakes: high
+  location: ubahn_station
+  targets: [npc_cop_profiling]
+  facts:
+    - "U-Bahn, Веддинг. Полицейский — молодой, устал, смотрит в сторону платформы. Потом взгляд падает на тебя."
+    - "Это Routinekontrolle — они проверяют в 'kriminalitätsbelastete Orte'. Ты попал в профиль — не по поступку, по виду."
+    - "При тебе: нет документов. Засвечивание = риск депортации. Счётчик exposed растёт с каждым контактом с системой."
+    - "Кваме предупреждал об этом. Сейчас ты понимаешь почему."
+  intro: "ПОЛИЦЕЙСКИЙ: «Dokumente, bitte.» Рутина в голосе. Он уже смотрит не на тебя — на следующего."
+  branches:
+    - id: stay_calm_hide
+      match: { verbs: [hide, flee, move] }
+      skill_check: { skill: ulitsa, vs: 40 }
+      outcomes:
+        - on: success
+          text: "Ты заходишь в вагон в последнюю секунду — двери закрываются. Сердце бьётся в горле. Полицейский даже не успевает среагировать. Ты в безопасности — пока."
+          effects: { set_flags: [n1_done, first_close_call], stress: 12 }
+          deltas: { G: 2 }
+          skill_xp: { ulitsa: 4, hladnokrovie: 3 }
+          leads_to: "засвечивания не было, но ты знаешь — это повторится"
+        - on: fail
+          text: "Полицейский видит рывок и это — уже не Routinekontrolle. «Stop.» Ты останавливаешься. Документов нет. Их забирают в участок на проверку. Ты там три часа. Они ничего не находят — пока — и отпускают. Но данные внесены."
+          effects: { set_flags: [n1_done, first_close_call, police_data_entered], inc: { exposed: 1 }, stress: 25 }
+          deltas: { G: 3 }
+          leads_to: "засвечен частично; облава в N6 будет опаснее"
+    - id: face_it_calm
+      match: { verbs: [talk, hide, apologize], honesty: [truthful], tone: [polite, neutral] }
+      skill_check: { skill: hladnokrovie, vs: 35 }
+      outcomes:
+        - on: success
+          text: "Ты останавливаешься. Держишься ровно. «Dokumente habe ich gerade nicht dabei.» Немецкий хромает, но спокойствие — нет. Полицейский смотрит на тебя: нет причины задерживать. «Nächstes Mal dabei haben.» И уходит. Ты стоишь. Выдыхаешь."
+          effects: { set_flags: [n1_done, first_close_call] }
+          deltas: { P: 2 }
+          skill_xp: { hladnokrovie: 5, deutsch: 3 }
+          leads_to: "хладнокровие сработало; Кваме это оценит"
+        - on: fail
+          text: "Ты пытаешься объяснить — но нервы, немецкий, смятение. Полицейский вежливо, но непреклонно просит подождать. Коллега появляется через десять минут. Имя записано. «Wir prüfen das.» (Мы проверим.) Отпускают — по недостатку оснований. Но файл открыт."
+          effects: { set_flags: [n1_done, first_close_call, police_data_entered], inc: { exposed: 1 }, stress: 20 }
+          leads_to: "файл открыт — аукнется позже"
+    - id: lie_identity
+      match: { verbs: [deceive, talk], honesty: [lie] }
+      skill_check: { skill: hladnokrovie, vs: 45 }
+      outcomes:
+        - on: success
+          text: "Ты даёшь несуществующее имя. Полицейский записывает и отпускает — проверить без бумаг сложно. Ложь сработала. На этот раз. Но имя теперь лежит в базе."
+          effects: { set_flags: [n1_done, first_close_call, lied_to_police], inc: { exposed: 1 }, dossier: "дал ложное имя при проверке" }
+          deltas: { T: -3 }
+          leads_to: "ложь в базе — мина на N6 и N9"
+        - on: fail
+          text: "Полицейский уточняет — имя, написание. Ты путаешься. «Kommen Sie mit, bitte.» Три часа в участке. Настоящих данных они так и не получают — но больше смотрят."
+          effects: { set_flags: [n1_done, first_close_call, police_data_entered, lied_to_police], inc: { exposed: 2 }, stress: 25, dossier: "дал ложное имя, задержан для проверки" }
+          deltas: { T: -4 }
+          leads_to: "высокий exposed — облава N6 будет критической"
+  fallback: { text: "Полицейский ждёт. Поезд уходит.", reopen: true }
+
+# ---------- ДЕНЬ 4: N2 — ПЕРВЫЙ ЗАРАБОТОК/ЕДА ----------
+- id: nevidimka_node_food_work
+  title: "Чёрная биржа"
+  category: dilemma
+  act: 1
+  node: N2
+  priority: 82
+  once: true
+  trigger: scheduled
+  day: 4
+  entry: { all: [ {flag: met_kwame}, {flag_not: n2_done} ] }
+  stakes: high
+  location: arbeiterstrich
+  targets: [npc_kwame]
+  facts:
+    - "Биржа подённого труда — рассвет, Веддинг. Разнорабочие, фургоны, люди у стены."
+    - "Кваме знает здесь всех. Два варианта: уборка квартир — безопаснее, 30 € в день; разгрузка склада — тяжелее, 50 €, бригадир не спрашивает."
+    - "Церковь: еда каждое утро, без условий. Но это не зарплата."
+    - "20 € таят быстро. Транспорт, телефон — и ноль."
+  intro: "КВАМЕ: «Church feeds you. But you need money. Here's how it works.»"
+  branches:
+    - id: church_food_only
+      match: { verbs: [rest, move, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты решаешь пока держаться церкви. Акуа даёт тарелку каши и кофе — без вопросов, без благодарностей обязательных. Голод отступает. Деньги не появляются. Завтра придётся решить."
+          effects: { set_flags: [n2_done, church_food_taken], hunger: -25 }
+          deltas: { A: 1 }
+          leads_to: "выживание без денег — временное; давление вернётся"
+    - id: cleaning_work
+      match: { verbs: [work, offer_help], methods: [labor, illegal_shift] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь с Кваме на уборку. Немецкая квартира, хозяйка не смотрит на лица — лишь бы чисто. Три часа, 30 €, кэш. Кваме: «Don't give your name. Don't say where you're from. In, clean, out.» Ты выполняешь инструкцию."
+          effects: { money: 30, set_flags: [n2_done, has_black_income, knows_cleaning_work], fatigue: 15, leaning: { gray: 1 } }
+          leads_to: "стабильный теневой доход; привязанность к серой схеме"
+    - id: warehouse_work
+      match: { verbs: [work], methods: [labor] }
+      skill_check: { skill: ulitsa, vs: 30 }
+      outcomes:
+        - on: success
+          text: "Тяжёлая смена на складе. Бригадир — молчаливый, 50 € в руку в конце. Ни имени, ни договора. Ты устал до кости, но в кармане деньги. Первые нормальные деньги."
+          effects: { money: 50, set_flags: [n2_done, has_black_income, knows_warehouse_work], fatigue: 28, leaning: { gray: 1 } }
+          skill_xp: { ulitsa: 4 }
+          leads_to: "больше денег, больше усталости, глубже в контур"
+        - on: fail
+          text: "Ты не успеваешь за темпом. Бригадир молча платит меньше — 25 €. Ни скандала, ни объяснений. Ты берёшь и уходишь. Тело ноет."
+          effects: { money: 25, set_flags: [n2_done, has_black_income], fatigue: 22, leaning: { gray: 1 } }
+          leads_to: "деньги есть — достоинство щиплет"
+  fallback: { text: "Кваме кивает на группу у стены. «Your choice.»", reopen: true }
+
+# ---------- ДЕНЬ 5: ДАВЛЕНИЕ ДЕНЕГ ----------
+- id: nevidimka_money_pressure
+  title: "Двадцать евро"
+  category: pressure
+  act: 1
+  priority: 55
+  once: true
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 4
+  entry: { all: [ {money_lt: 15}, {flag: n2_done} ] }
+  stakes: medium
+  location: any
+  targets: []
+  facts:
+    - "Деньги кончаются. Транспорт, телефон, минимум еды — уже не влезает в бюджет."
+    - "Церковь кормит, но это не решение навсегда."
+  intro: "В кармане почти ничего. Ты считаешь монеты."
+  branches:
+    - id: church_again
+      match: { verbs: [ask_help, move, rest, beg] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь в церковь. Акуа ставит тарелку молча. Эммануэль подсаживается: «We have a small fund. Not much. But it's yours.» Ты берёшь 10 €. Без долга. Непривычно."
+          effects: { money: 10, hunger: -15, stress: -8, faction: { african_church: 3 } }
+          deltas: { A: 1 }
+          leads_to: "церковь как страховка — но она не бесконечна"
+    - id: take_any_work
+      match: { verbs: [work, offer_help, trade] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься на первое, что предлагает Кваме. Мойка окон — четыре часа, 20 €. Грязная работа, спина болит. Деньги есть."
+          effects: { money: 20, fatigue: 18 }
+          leads_to: "деньги решены ненадолго"
+  fallback: { text: "Деньги сами не появятся.", reopen: true }
+
+# ---------- ДЕНЬ 6: N3 — РАСОВОЕ ПРОФИЛИРОВАНИЕ ----------
+- id: nevidimka_node_profiling
+  title: "Профиль"
+  category: dilemma
+  act: 1
+  node: N3
+  priority: 80
+  once: true
+  trigger: scheduled
+  day: 6
+  entry: { all: [ {flag_not: n3_done} ] }
+  stakes: high
+  location: hasenheide_park
+  targets: [npc_cop_profiling]
+  facts:
+    - "Парк Хазенхайде. Ты сидишь на скамейке — просто отдыхаешь. Ничего не делаешь."
+    - "Полицейский патруль. Двое. Они идут вдоль аллеи. Один замечает тебя — секунда взгляда, разворот."
+    - "Это 'kriminalitätsbelasteter Ort' — так называет место полицейская статистика. Ты здесь не торгуешь. Но ты здесь."
+    - "Кваме объяснял это явление без ярости: система обозначила место, профиль — логика из него. Это не злость на тебя лично."
+  intro: "ПОЛИЦЕЙСКИЙ: «Guten Tag. Routinekontrolle. Dokumente, bitte.» Второй делает шаг в сторону — закрывает выход."
+  branches:
+    - id: comply_documents
+      match: { verbs: [submit_docs, talk, apologize], honesty: [truthful], tone: [polite, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь спокойно: документов нет. Они записывают, проверяют по базе. Ничего нет — пока. «Empfehlen wir, immer Ausweis dabeizuhaben.» (Рекомендуем всегда иметь при себе удостоверение.) Стандартная фраза. Они уходят к следующему. Ты остаёшься на скамейке. Парк продолжает жить."
+          effects: { set_flags: [n3_done, profiling_experienced], inc: { exposed: 1 }, stress: 18 }
+          deltas: { P: 2 }
+          leads_to: "засвечен; внутренняя усталость от системы; Кваме поймёт"
+    - id: ask_why
+      match: { verbs: [inquire_status, talk, persuade], tone: [polite, neutral] }
+      skill_check: { skill: hladnokrovie, vs: 30 }
+      outcomes:
+        - on: success
+          text: "Ты спрашиваешь вежливо: почему именно здесь, почему я? Полицейский смотрит — не враждебно, но и без извинений. «Das ist Vorschrift für diesen Bereich.» (Предписание для этой зоны.) Ответ честный, пустой. Тебя отпускают. Ты сидишь и понимаешь: это не про тебя и именно про тебя одновременно."
+          effects: { set_flags: [n3_done, profiling_experienced, understood_systemic], stress: 12 }
+          deltas: { P: 2, G: 1 }
+          skill_xp: { hladnokrovie: 4, deutsch: 2 }
+          leads_to: "системное понимание; меньше растерянности в будущих стычках"
+        - on: fail
+          text: "Ты теряешь хладнокровие — не от злости, от усталости. Голос дрожит. Полицейский становится холоднее. Второй записывает всё. Отпускают, но с пометкой."
+          effects: { set_flags: [n3_done, profiling_experienced], inc: { exposed: 1 }, stress: 22, dossier: "вёл себя неустойчиво при проверке" }
+          leads_to: "exposed растёт; пометка в деле"
+    - id: run_profiling
+      match: { verbs: [flee, hide] }
+      skill_check: { skill: ulitsa, vs: 45 }
+      outcomes:
+        - on: success
+          text: "Ты встаёшь и быстро уходишь — не бежишь, но быстро. Они окликают, но ты уже в другой аллее. Ты знаешь этот парк. Они — нет. Сердце молотит."
+          effects: { set_flags: [n3_done, profiling_experienced], stress: 20 }
+          deltas: { G: 2 }
+          skill_xp: { ulitsa: 5 }
+          leads_to: "ушёл, но теперь будут смотреть здесь активнее"
+        - on: fail
+          text: "«Stop! Stehen bleiben!» Ты не успеваешь. Тебя догоняют. Теперь это уже не Routinekontrolle — это уклонение. Три часа в участке. Отпускают. Exposed сильно растёт."
+          effects: { set_flags: [n3_done, profiling_experienced, police_data_entered], inc: { exposed: 2 }, stress: 30, dossier: "попытка скрыться при проверке" }
+          leads_to: "высокий exposed — критично для N6"
+  fallback: { text: "Полицейский ждёт. Второй стоит сбоку.", reopen: true }
+
+# ---------- ДЕНЬ 8: СЛУЖБА В ЦЕРКВИ ----------
+- id: nevidimka_church_service
+  title: "Воскресная служба"
+  category: community
+  act: 1
+  priority: 60
+  once: true
+  trigger: scheduled
+  day: 8
+  entry: { all: [ {flag: met_pastor}, {flag_not: church_service_done} ] }
+  stakes: low
+  location: storefront_church
+  targets: [npc_pastor_emmanuel, npc_sister_akua]
+  facts:
+    - "Воскресенье. Тридцать человек в зале. Пластиковые стулья, живая музыка, барабаны."
+    - "Языки мешаются: twi, yoruba, французский с акцентом — и иногда немецкий в молитве."
+    - "Никто не спрашивает документов. Никто не спрашивает истории."
+    - "Это место — единственное в городе, где ты просто человек, а не профиль."
+  intro: "ПАСТОР ЭММАНУЭЛЬ: «We are not a waiting room. We are a home. Whoever comes — belongs.»"
+  branches:
+    - id: join_service
+      match: { verbs: [rest, talk, observe, befriend, offer_help] }
+      outcomes:
+        - on: always
+          text: "Ты остаёшься. Поёшь — или молчишь, не важно. Акуа подпевает что-то на йоруба. Кто-то обнимает тебя после — просто так. Первый раз за долгое время ты чувствуешь не выживание, а что-то другое. Что — трудно назвать. Может, принадлежность."
+          effects: { set_flags: [church_service_done], stress: -20, hunger: -10, faction: { african_church: 8 } }
+          deltas: { A: 2, P: 1 }
+          leads_to: "церковный капитал растёт; путь к Эммануэлю открывается глубже"
+    - id: leave_early
+      match: { verbs: [move, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты уходишь до конца. Акуа кивает — без обиды. «Door's open next week.» Ты чувствуешь что-то похожее на сожаление."
+          effects: { set_flags: [church_service_done], stress: -5 }
+          leads_to: "связь с церковью слабее, но не потеряна"
+  fallback: { text: "Служба продолжается.", reopen: true }
+
+# ============================================================
+# АКТ II — УГЛУБЛЕНИЕ: ВЫБОР ПУТИ
+# ============================================================
+
+# ---------- ДЕНЬ 12: N4 — ПАСТОР vs КВАМЕ ----------
+- id: nevidimka_node_paths
+  title: "Две двери"
+  category: dilemma
+  act: 2
+  node: N4
+  priority: 78
+  once: true
+  trigger: scheduled
+  day: 12
+  entry: { all: [ {flag: met_pastor}, {flag: met_kwame}, {flag_not: n4_done} ] }
+  stakes: high
+  location: storefront_church
+  targets: [npc_pastor_emmanuel, npc_kwame]
+  facts:
+    - "Пастор Эммануэль предлагает путь: у него есть связи с адвокатами-волонтёрами. Возможно — поздняя подача на убежище, поручительство общины, иногда — брак с гражданином/гражданкой. Это официально. Это значит засветиться."
+    - "Кваме говорит другое: войти в систему сейчас = риск немедленной депортации. Тень — не навсегда, но пока единственное, что работает. 'Stay small, stay invisible.'"
+    - "Оба правы по-своему. Обе двери существуют. Только одна открывает завтра, другая — сегодня."
+  intro: "ЭММАНУЭЛЬ: «Brother, I know a lawyer. There are ways — slow, risky, but real.» КВАМЕ тихо: «Don't. Not now. The system is not your friend yet.»"
+  branches:
+    - id: choose_legal_path
+      match: { verbs: [ask_help, apply, inquire_status, talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь Эммануэлю: да, хочу попробовать. Он записывает что-то. «I'll arrange a meeting with Frau Berger. She volunteers. She knows your situation.» Кваме стоит в стороне: «Your choice, man. Watch yourself.» Ты чувствуешь страх и что-то похожее на надежду."
+          effects: { set_flags: [n4_done, legal_path_chosen, meets_lawyer_soon], leaning: { legal: 2 } }
+          deltas: { L: 2, P: 1 }
+          leads_to: "путь к легализации; встреча с адвокатом; выше риск засвечивания"
+    - id: choose_shadow_path
+      match: { verbs: [hide, refuse, talk], honesty: [half_truth, omission] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь Эммануэлю: ещё не готов. Он кивает — без осуждения. «The door stays open.» Кваме позже: «Smart. System is a trap dressed as a door.» Ты остаёшься в тени. Сегодня — безопаснее."
+          effects: { set_flags: [n4_done, shadow_path_chosen], leaning: { gray: 2 } }
+          deltas: { L: -1 }
+          leads_to: "тень стабилизируется; путь к Кваме углубляется"
+    - id: choose_both_try
+      match: { verbs: [talk, ask_help, search], honesty: [truthful, half_truth] }
+      requires: [ {flag: church_service_done} ]
+      outcomes:
+        - on: always
+          text: "Ты говоришь: не знаю ещё. Хочу сначала поговорить с этим адвокатом — узнать риски. Эммануэль кивает. Кваме пожимает плечами: «At least you're not naive.» Это промежуточное состояние. Дорогостоящее, но честное."
+          effects: { set_flags: [n4_done, exploring_options] }
+          leads_to: "нейтральная позиция; события разворачивают сами"
+  fallback: { text: "Оба смотрят на тебя. Ответ нужен.", reopen: true }
+
+# ---------- ДЕНЬ 14: ВСТРЕЧА С АДВОКАТОМ ----------
+- id: nevidimka_lawyer_meeting
+  title: "Фрау Бергер"
+  category: arc
+  act: 2
+  priority: 72
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: meets_lawyer_soon}, {flag_not: lawyer_meeting_done} ] }
+  stakes: medium
+  location: storefront_church
+  targets: [npc_lawyer_volunteer]
+  facts:
+    - "Адвокат-волонтёр Фрау Бергер — раз в месяц в этой церкви. Объясняет без прикрас."
+    - "Поздняя подача на убежище: возможно, но сложно — нужно объяснить, почему не подал раньше."
+    - "Поручительство общины (Bürgschaft): требует, чтобы кто-то взял на себя ответственность — это засветка для поручителя тоже."
+    - "Брак с гражданином/гражданкой ЕС: юридически возможен; если по взаимному желанию — реально; если фиктивный — уголовная статья для обоих."
+    - "Любой путь требует засветиться. Любой путь — риск до финала."
+  intro: "ФРАУ БЕРГЕР: «Ich erkläre alles. Aber ich sage Ihnen auch: jeder Weg trägt Risiken.» (Объясню всё. Но скажу сразу: каждый путь несёт риски.)"
+  branches:
+    - id: listen_carefully
+      match: { verbs: [talk, ask_help, inquire_status, observe] }
+      outcomes:
+        - on: always
+          text: "Ты слушаешь каждое слово. Бергер разворачивает три пути — как карту с минными полями. «Das Recht ist auf Ihrer Seite — aber die Praxis ist langsam.» (Право на вашей стороне — но практика медленная.) Ты уходишь с тетрадкой заметок и тяжёлой ясностью."
+          effects: { set_flags: [lawyer_meeting_done, knows_legal_options] }
+          deltas: { T: 1, L: 1 }
+          leads_to: "знание путей к легализации; решение — в N9"
+    - id: ask_asylum
+      match: { verbs: [apply, submit_docs, ask_help], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты спрашиваешь про убежище. Бергер объясняет: поздняя подача возможна при наличии оснований. «Haben Sie Verfolgungsgründe?» (Есть ли у вас основания для преследования?) Ты начинаешь говорить. Это трудно — но это правда."
+          effects: { set_flags: [lawyer_meeting_done, knows_legal_options, asylum_option_known], leaning: { legal: 1 } }
+          deltas: { T: 2, L: 1 }
+          leads_to: "путь убежища открыт; требует подачи документов = засветка"
+  fallback: { text: "Бергер ждёт вопросов.", reopen: true }
+
+# ---------- ДЕНЬ 16: N5 — ОТНОШЕНИЯ ----------
+- id: nevidimka_node_relation
+  title: "Кто ты здесь"
+  category: dilemma
+  act: 2
+  node: N5
+  priority: 68
+  once: true
+  trigger: scheduled
+  day: 16
+  entry: { all: [ {flag_not: n5_done}, {flag: n2_done} ] }
+  stakes: medium
+  location: storefront_church
+  targets: [npc_sister_akua]
+  facts:
+    - "Сестра Акуа — в общине давно. Нигерия, пять лет в Берлине, статус через брак."
+    - "Она знает изнутри, что значит быть невидимым — и что значит стать видимым."
+    - "Отношения здесь — не романтика; это вопрос доверия и идентичности в невидимости."
+  intro: "АКУА: «You don't have a name here, do you? Not a real one. You're 'the one who helps with cleaning'. I was like that too.»"
+  branches:
+    - id: open_up
+      match: { verbs: [talk, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты рассказываешь — немного. Откуда, зачем, что было. Акуа слушает без суждений. «You came for something. Don't let the survival swallow the reason.» Ты не знал, что тебе нужно это услышать."
+          effects: { set_flags: [n5_done, relation_akua_open], stress: -15, faction: { african_church: 5 } }
+          deltas: { A: 2, P: 1 }
+          leads_to: "доверие с Акуа; она может помочь с поручительством позже"
+    - id: guard_yourself
+      match: { verbs: [refuse, hide, talk], honesty: [omission, half_truth] }
+      outcomes:
+        - on: always
+          text: "Ты не рассказываешь — слишком долго привыкал не говорить лишнего. Акуа не обижается: «Okay. You don't have to. Food's on the table.» Ты чуть злишься на себя потом."
+          effects: { set_flags: [n5_done] }
+          leads_to: "связь с Акуа не растёт; поручительство закрыто"
+  fallback: { text: "Акуа убирает со стола. «You want more coffee?»", reopen: true }
+
+# ---------- ДЕНЬ 19: ТЕНЕВАЯ СМЕНА (повторяемая) ----------
+- id: nevidimka_black_shift
+  title: "Невидимая смена"
+  category: arc
+  act: 2
+  priority: 45
+  trigger: pool
+  weight: 1.8
+  cooldown_days: 2
+  entry: { all: [ {flag: has_black_income} ] }
+  stakes: low
+  location: baustelle
+  targets: [npc_kwame]
+  facts:
+    - "Стройка или уборка — разные адреса, одна схема. Кваме звонит, ты идёшь, платят кэшем."
+    - "Никто не говорит имён. Никто не смотрит на лица дольше нужного."
+  intro: "Кваме скидывает адрес. «Two hours. 35. Cash. Don't be late.»"
+  branches:
+    - id: take_shift
+      match: { verbs: [work, move, give, offer_help] }
+      skill_check: { skill: ulitsa, vs: 25 }
+      outcomes:
+        - on: success
+          text: "Ты работаешь, получаешь деньги, уходишь. Всё по плану. Рабочий-немец на стройке смотрит в твою сторону — не враждебно, просто оценивает. Потом кивает. Вы не разговариваете."
+          effects: { money: 35, fatigue: 16, inc: { black_shifts: 1 } }
+          skill_xp: { ulitsa: 3 }
+          leads_to: "доход, рутина, невидимость — пока"
+        - on: fail
+          text: "Что-то идёт не так: смена отменяется, бригадир платит меньше. Ты берёшь 15 €. Кваме: «That's how it goes sometimes. Nothing personal.»"
+          effects: { money: 15, fatigue: 10, inc: { black_shifts: 1 } }
+          leads_to: "нестабильный доход — нормально для тени"
+    - id: refuse_today
+      match: { verbs: [refuse, rest] }
+      outcomes:
+        - on: always
+          text: "Ты слишком устал. Или просто не можешь сегодня. Кваме не давит: «Cool. Next time.» Деньги не появляются."
+          effects: { fatigue: -10, stress: -5 }
+          leads_to: "отдых — тоже выживание"
+  fallback: { text: "Адрес ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 22: N6 — ОБЛАВА ----------
+- id: nevidimka_node_raid
+  title: "Облава"
+  category: dilemma
+  act: 2
+  node: N6
+  priority: 88
+  once: true
+  trigger: scheduled
+  day: 22
+  entry: { all: [ {flag_not: n6_done} ] }
+  stakes: extreme
+  location: arbeiterstrich
+  targets: [npc_cop_profiling]
+  facts:
+    - "Полицейский рейд у биржи труда. Несколько машин, несколько офицеров. Проверяют всех."
+    - "Если exposed >= 2 — твои данные уже в базе; вероятность задержания выше."
+    - "Если есть lied_to_police — противоречие в данных при сверке будет замечено."
+    - "Кваме здесь тоже. Он первым почуял — и тихо подаёт знак: лови взгляд."
+  intro: "Ты замечаешь полицейские машины раньше, чем они тебя. Кваме рядом смотрит в другую сторону — сигнал: заметил."
+  branches:
+    - id: leave_quietly
+      match: { verbs: [flee, hide, move] }
+      skill_check: { skill: ulitsa, vs: 40, plus: { hladnokrovie: 0.5 } }
+      outcomes:
+        - on: success
+          text: "Ты и Кваме уходите без суеты — не бегом, просто сворачиваете за угол. Профессионально. Полиция проверяет остальных. Ты в безопасности. За углом Кваме смотрит на тебя: «You're learning.»"
+          effects: { set_flags: [n6_done, survived_raid], stress: 20 }
+          deltas: { G: 1 }
+          skill_xp: { ulitsa: 5, hladnokrovie: 4 }
+          leads_to: "пережил облаву; exposed не вырос"
+        - on: fail
+          text: "Вас замечают при уходе. Не бег, но подозрительно. Офицер идёт следом. Ты останавливаешься сам — лучше так. Проверка. Данные сверяют с базой."
+          effects: { set_flags: [n6_done, caught_in_raid], inc: { exposed: 1 }, stress: 30 }
+          leads_to: "задержан; дальше — по exposed"
+    - id: stand_face_raid
+      match: { verbs: [talk, submit_docs, apologize], honesty: [truthful], tone: [polite, neutral] }
+      requires: [ {flag_not: lied_to_police}, {flag_not: police_data_entered} ]
+      outcomes:
+        - on: always
+          text: "Ты остаёшься. Документов нет — говоришь это прямо. Имя, история — как есть. Офицер составляет протокол. Тебя не задерживают сразу, но назначают явку. «Sie haben sich kooperativ verhalten.» (Вы вели себя кооперативно.) Это замечено."
+          effects: { set_flags: [n6_done, cooperative_with_police, has_appointment], inc: { exposed: 1 }, stress: 25 }
+          deltas: { T: 2, L: 1 }
+          leads_to: "официальный контакт — засветился, но честно; открывает путь к убежищу"
+    - id: caught_high_exposed
+      match: { verbs: [talk, submit_docs, apologize, observe] }
+      requires: [ {counter_gte: {exposed: 2}} ]
+      outcomes:
+        - on: always
+          text: "Твои данные уже в базе. Офицер находит противоречие. Тебя задерживают. В участке — протокол, ожидание. Тебя не депортируют сразу — не хватает основания — но статус известен системе. Это меняет всё."
+          effects: { set_flags: [n6_done, detained_high_exposed, system_knows], inc: { exposed: 2 }, stress: 35, dossier: "задержан при облаве, данные не совпали" }
+          deltas: { P: 1 }
+          leads_to: "высокий риск; путь к N9 сужается"
+  fallback: { text: "Полицейские приближаются. Решать нужно сейчас.", reopen: true }
+
+# ============================================================
+# АКТ III — СХОЖДЕНИЕ: ПЕРЕД РАЗВЯЗКОЙ
+# ============================================================
+
+# ---------- ДЕНЬ 30: N7 — СЕРЫЙ ШАНС (БРАК/СХЕМА) ----------
+- id: nevidimka_node_gray_chance
+  title: "Быстрый путь"
+  category: dilemma
+  act: 3
+  node: N7
+  priority: 74
+  once: true
+  trigger: scheduled
+  day: 30
+  entry: { all: [ {flag_not: n7_done} ] }
+  stakes: high
+  location: storefront_church
+  targets: [npc_kwame, npc_pastor_emmanuel]
+  facts:
+    - "Кваме знает человека: можно найти немку/немца для фиктивного брака — 3000 €, «надёжный», «так делали многие»."
+    - "Эммануэль знает другое: в общине есть человек с постоянным ВНЖ, готовый стать официальным поручителем (Bürgschaft). Бесплатно. Но это засветка для него."
+    - "Пастор говорит тихо: «I won't judge the other way. But I know this one is clean.»"
+    - "Фиктивный брак — уголовная статья для обоих, если поймут. Поручительство — риск для поручителя, но легально."
+  intro: "КВАМЕ: «I know someone. 3000 euros, you're married, you're legal. People do it.» ЭММАНУЭЛЬ: «There's another way. Cleaner. Slower.»"
+  branches:
+    - id: fake_marriage
+      match: { verbs: [trade, give, apply], methods: [money, buy] }
+      requires: [ {money_gte: 300} ]
+      outcomes:
+        - on: always
+          text: "Ты выбираешь быстрый путь. Деньги уходят — часть сейчас, договорённость на остаток. Кваме говорит: «Smart. Just don't talk about it.» Бумаги оформляются где-то в стороне. Это работает. Пока."
+          effects: { money: -300, set_flags: [n7_done, fake_marriage_arranged], leaning: { gray: 3 } }
+          deltas: { L: -4, T: -3 }
+          leads_to: "статус-лазейка; но фиктивный брак — мина на N9"
+    - id: vouching
+      match: { verbs: [ask_help, talk, apply], honesty: [truthful] }
+      requires: [ {flag: church_service_done} ]
+      outcomes:
+        - on: always
+          text: "Ты идёшь к поручителю — через Эммануэля. Встреча короткая, человечная. Он подписывает бумаги. «I'm not doing this for God. I'm doing this because it's right.» Путь медленный, но чистый. Засвечивание есть — но не криминальное."
+          effects: { set_flags: [n7_done, vouching_path_active, officially_exposed], inc: { exposed: 1 }, leaning: { legal: 2 }, faction: { african_church: 10 } }
+          deltas: { T: 2, L: 2 }
+          leads_to: "поручительство открывает путь к статусу; официальный контакт с системой"
+    - id: wait_neither
+      match: { verbs: [refuse, hide, observe] }
+      outcomes:
+        - on: always
+          text: "Ты пока ничего не берёшь. Оба варианта — риск. Ты остаёшься в тени. Эммануэль кивает: «The door stays open.» Кваме пожимает плечами. Время идёт."
+          effects: { set_flags: [n7_done] }
+          leads_to: "оба пути закрыты до N9 — ведёт к gray или exit"
+  fallback: { text: "Оба смотрят. Нужен ответ.", reopen: true }
+
+# ---------- ДЕНЬ 35: N8 — ЗЕРКАЛО-НОВИЧОК ----------
+- id: nevidimka_node_mirror
+  title: "Новенький"
+  category: dilemma
+  act: 3
+  node: N8
+  priority: 65
+  once: true
+  trigger: scheduled
+  day: 35
+  entry: { all: [ {flag_not: n8_done} ] }
+  stakes: medium
+  location: storefront_church
+  targets: [npc_pastor_emmanuel]
+  facts:
+    - "В церкви появился новый человек — как ты месяц назад. Глаза те же. Вопросы те же."
+    - "Эммануэль тихо смотрит на тебя: «You know this better than I do now.»"
+    - "Это зеркало: что ты хочешь передать? Правду Кваме? Надежду пастора? Что-то своё?"
+  intro: "ПАСТОР ЭММАНУЭЛЬ: «His name is Kofi. Two days in Berlin. You remember that day?»"
+  branches:
+    - id: share_kwame_truth
+      match: { verbs: [talk, refuse], honesty: [truthful], tone: [neutral, cold] }
+      requires: [ {flag: shadow_path_chosen} ]
+      outcomes:
+        - on: always
+          text: "Ты говоришь то, что сказал тебе Кваме: держись маленьким, не светись, знай места. Кофи слушает внимательно. Ты слышишь себя месяц назад — и понимаешь, как изменился."
+          effects: { set_flags: [n8_done, passed_kwame_wisdom] }
+          deltas: { A: 1, P: 1 }
+          leads_to: "ты вошёл в контур наставничества — тень передаётся"
+    - id: share_church_hope
+      match: { verbs: [talk, offer_help, befriend], honesty: [truthful] }
+      requires: [ {flag: legal_path_chosen} ]
+      outcomes:
+        - on: always
+          text: "Ты говоришь: здесь есть люди. Не обещаешь лёгкого пути. Говоришь про пастора, про адвоката, про то, что есть варианты — дорогие, рискованные, но есть. Кофи смотрит на тебя с чем-то похожим на надежду."
+          effects: { set_flags: [n8_done, passed_church_hope], faction: { african_church: 5 } }
+          deltas: { A: 2 }
+          leads_to: "ты стал частью цепочки помощи в общине"
+    - id: share_both
+      match: { verbs: [talk, offer_help], honesty: [truthful] }
+      requires: [ {flag: exploring_options} ]
+      outcomes:
+        - on: always
+          text: "Ты говоришь честно: не знаю, что правильно. Есть путь тени, есть путь системы. Оба стоят чего-то. «Just don't let them take your name from you», — говоришь ты. Сам удивляешься, откуда это."
+          effects: { set_flags: [n8_done] }
+          deltas: { A: 1, P: 2 }
+          leads_to: "нейтральный путь к N9"
+    - id: say_nothing
+      match: { verbs: [observe, rest, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты смотришь на Кофи и не знаешь, что сказать. Или не хочешь — ещё не готов. Эммануэль берёт Кофи к себе. Ты уходишь в свой угол."
+          effects: { set_flags: [n8_done] }
+          leads_to: "зеркало не сработало — но это тоже ответ"
+  fallback: { text: "Эммануэль смотрит на тебя. Кофи ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 40: УСТАЛОСТЬ ----------
+- id: nevidimka_shadow_fatigue
+  title: "Тяжесть тени"
+  category: pressure
+  act: 3
+  priority: 50
+  trigger: pool
+  weight: 1.2
+  cooldown_days: 5
+  entry: { all: [ {flag: has_black_income}, {counter_gte: {black_shifts: 3}} ] }
+  stakes: medium
+  location: any
+  targets: []
+  facts:
+    - "Месяц в невидимости. Усталость другого рода — не от работы, от постоянного напряжения. Нельзя расслабиться нигде."
+    - "Кваме называет это «shadow tax» — цена жизни в тени: не деньги, а нервы."
+  intro: "Ты просыпаешься ночью от ерунды — показалось, кто-то в дверь. Никого. Тело уже не отличает угрозу от тишины."
+  branches:
+    - id: church_refuge
+      match: { verbs: [rest, move, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь в церковь просто посидеть. Никто не спрашивает зачем. Акуа ставит кофе. Барабаны репетируют к воскресенью. Ты сидишь час — и становится чуть легче. Не лучше, но легче."
+          effects: { stress: -20, hunger: -10 }
+          deltas: { A: 1 }
+          leads_to: "церковь как психологический якорь"
+    - id: talk_kwame_fatigue
+      match: { verbs: [talk, befriend] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь Кваме: тяжело. Он долго молчит. «You know what the hard part is? You start forgetting what it feels like to not be afraid.» Это не утешение. Но это правда, и правда помогает по-другому."
+          effects: { stress: -10, inc: { kwame_trust: 1 } }
+          deltas: { T: 1 }
+          leads_to: "доверие Кваме растёт"
+  fallback: { text: "Ночь тихая. Слишком.", reopen: true }
+
+# ---------- ДЕНЬ 45: ВОЗМОЖНОСТЬ УЕХАТЬ ----------
+- id: nevidimka_exit_option
+  title: "Письмо из дома"
+  category: arc
+  act: 3
+  priority: 60
+  once: true
+  trigger: scheduled
+  day: 45
+  entry: { all: [ {flag_not: exit_option_seen} ] }
+  stakes: medium
+  location: storefront_church
+  targets: [npc_pastor_emmanuel]
+  facts:
+    - "Из дома пришло сообщение. Дядя предлагает помочь вернуться — есть деньги на билет, есть место."
+    - "Это не плохой вариант. Берлин не для всех. Но ты ещё не знаешь, чего хочешь."
+  intro: "Телефон вибрирует. Дядя: «Come home, nephew. We miss you. It's not worth it.»"
+  branches:
+    - id: consider_exit
+      match: { verbs: [talk, observe, rest], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь Эммануэлю про сообщение. Он не давит: «Only you know your answer. What brought you here?» Ты молчишь долго. Потом говоришь что-то — не вслух, только себе."
+          effects: { set_flags: [exit_option_seen], stress: -10 }
+          deltas: { P: 2 }
+          leads_to: "вариант выхода остаётся открытым до N9"
+    - id: reject_exit_firmly
+      match: { verbs: [refuse, talk], honesty: [truthful], tone: [neutral, polite] }
+      outcomes:
+        - on: always
+          text: "Ты пишешь дяде: ещё нет. Не объясняешь зачем — он не поймёт. Ты сам едва понимаешь. Но нет."
+          effects: { set_flags: [exit_option_seen, rejected_exit] }
+          deltas: { P: 3 }
+          leads_to: "остаёшься — путь в Берлине продолжается до N9"
+  fallback: { text: "Телефон снова вибрирует. Дядя ждёт ответа.", reopen: true }
+
+# ---------- N9: РАЗВЯЗКА ----------
+- id: nevidimka_node_resolution
+  title: "Момент настоящего"
+  category: dilemma
+  act: 3
+  node: N9
+  priority: 99
+  once: true
+  trigger: scheduled
+  day: 55
+  entry: { all: [ {flag_not: n9_done}, {flag: n8_done} ] }
+  stakes: extreme
+  location: storefront_church
+  targets: [npc_pastor_emmanuel]
+  facts:
+    - "Пастор Эммануэль говорит: Фрау Бергер может подать документы на следующей неделе. Последний шанс для пути через систему."
+    - "Кваме говорит: у него есть работа в другом городе — надёжнее, меньше светишься. Предлагает уехать вместе."
+    - "Дядя ещё ждёт. Билет домой реален."
+    - "Всё, что ты накопил за эти недели — связи, выборы, факты в базе — сходится здесь."
+  intro: "Ты стоишь у окна церкви. Берлин внизу — как всегда, без тебя в расчёте. Эммануэль подходит: «Brother. It's time to choose what comes next.»"
+  branches:
+    # Концовка 1: ЛЕГАЛИЗАЦИЯ (legal)
+    # Условие: шёл легальным путём, поручительство или убежище, не засвечен критично
+    - id: ending_legal_path
+      match: { verbs: [apply, submit_docs, ask_help, talk], honesty: [truthful] }
+      requires:
+        - any_flag: [vouching_path_active, asylum_option_known]
+        - flag: lawyer_meeting_done
+        - flag_not: detained_high_exposed
+      outcomes:
+        - on: always
+          text: "Ты говоришь: да. Бергер подаёт документы. Поручитель подтверждает. Процесс долгий — месяцы, может быть. Но ты в системе — официально, с правом на ответ. Это не победа ещё. Это шанс. Эммануэль: «Now you have a name here. It's hard to take away what has a name.» Новая глава."
+          effects: { set_flags: [n9_done, ending_legal, game_over] }
+          deltas: { T: 2, L: 2, P: 1 }
+          leads_to: "① легализация — редко, дорого, по-настоящему"
+    # Концовка 2: СЕРАЯ СТАБИЛЬНОСТЬ (gray)
+    # Условие: теневой путь, не засвечен критично, не уходит
+    - id: ending_gray_stability
+      match: { verbs: [hide, talk, rest, observe] }
+      requires:
+        - flag: shadow_path_chosen
+        - flag_not: system_knows
+        - flag_not: rejected_exit
+      outcomes:
+        - on: always
+          text: "Ты остаёшься — не здесь, но в Берлине. Другой район, другие смены, те же правила Кваме. Это не стабильность на бумаге. Это равновесие на натянутой верёвке. Ты уже умеешь ходить по ней. Кваме: «Welcome to the permanent temporary.» Ты понимаешь иронию. И улыбаешься."
+          effects: { set_flags: [n9_done, ending_gray, game_over] }
+          leads_to: "② серая стабильность — устойчивая, вечно рискующая"
+    # Концовка 3: ПОДПОЛЬЕ (underground)
+    # Условие: криминальный уклон, фиктивный брак или серые схемы глубоко
+    - id: ending_underground_path
+      match: { verbs: [hide, move, trade, give] }
+      requires:
+        - any_flag: [fake_marriage_arranged, passed_kwame_wisdom]
+        - leaning_gte: { gray: 4 }
+      outcomes:
+        - on: always
+          text: "Ты уходишь глубже — туда, где тебя не ищут. Новое имя, другой район, другие люди. Ты стал частью контура — не из выбора, из необходимости. Теперь ты сам тянешь кого-то сюда. Ты помнишь, каково это — быть Кофи. Это что-то значит. Что именно — ещё не ясно."
+          effects: { set_flags: [n9_done, ending_underground, game_over] }
+          leads_to: "③ подполье — глубже в контур"
+    # Концовка 4: ВЫХОД (exit)
+    # Условие: высокий PRIDE, или exit_option_seen без reject, или система знает
+    - id: ending_exit_dignity
+      match: { verbs: [move, refuse, talk], honesty: [truthful] }
+      requires:
+        - flag: exit_option_seen
+        - flag_not: rejected_exit
+      outcomes:
+        - on: always
+          text: "Ты пишешь дяде: еду. Пастор провожает тебя у двери. «You came. You tried. God sees that.» Ты не проиграл — ты выбрал. Берлин не принял тебя на своих условиях. Ты не принял его на его. Это не поражение. Это ответ на вопрос, который надо было задать раньше — или позже. Самолёт в обратную сторону. Другая глава."
+          effects: { set_flags: [n9_done, ending_exit, game_over] }
+          deltas: { P: 2 }
+          leads_to: "④ выход с достоинством — сам, с поднятой головой"
+    # Концовка 5: ДЕПОРТАЦИЯ (deport)
+    # Условие: система знает, высокий exposed, задержан
+    - id: ending_deport_caught
+      match: { verbs: [talk, submit_docs, apply, rest, observe] }
+      requires:
+        - flag: detained_high_exposed
+        - counter_gte: { exposed: 3 }
+      outcomes:
+        - on: always
+          text: "Явка. Ты пришёл — или тебя нашли. Протокол. Решение. Тебе дают время собрать вещи — несколько дней. Эммануэль приходит в центр содержания. Сидит рядом. Не говорит ничего особенного — просто сидит. Самолёт. Аэропорт, другой. Ты выходишь в другой город — в который когда-то хотел вернуться. Или не хотел. Это случилось. Это — не конец. Это разворот."
+          effects: { set_flags: [n9_done, ending_deport, game_over] }
+          leads_to: "⑤ депортация — без чернухи, с достоинством, новая глава"
+    # Дефолтная: серая стабильность (если ни одно условие не сработало)
+    - id: ending_gray_default
+      match: { verbs: [observe, inspect_self, talk, rest, apply, submit_docs, inquire_status, give, refuse, hide, move, search] }
+      outcomes:
+        - on: always
+          text: "Ты остаёшься. Не потому что решил — просто время прошло, и ты здесь. В тени, в рутине, в невидимости. Это не то, о чём мечтают. Но это жизнь — и она продолжается."
+          effects: { set_flags: [n9_done, ending_gray, game_over] }
+          leads_to: "② серая стабильность по умолчанию"
+  fallback: { text: "Берлин снаружи шумит. Ты у окна. Ответ нужен.", reopen: true }

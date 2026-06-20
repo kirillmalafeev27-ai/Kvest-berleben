@@ -1,0 +1,47 @@
+# NPC-карточки линии «Война».
+# Формат — content/SCHEMA.md §NPC-карточка.
+# Персонажи из design/09 §9.3 (украинская сеть) + jobcenter.
+npcs:
+  npc_oksana:
+    name: "Оксана"
+    faction: ukrainian_volunteers
+    nationality: украинка
+    axes_self: { G: 10, T: 30, A: 40, L: 20, P: 20 }
+    languages: [uk, ru, de_medium, en]
+    register: "пробивная, деловая, всё по делу; мешает укр./рус.; «слухай», «записуй», «все так проходили»"
+    tics: ["я сама через это прошла", "запиши в чат, там всі відповіді", "плакати — потім, зараз — папери"]
+    likes: [action, getting_things_done, community_solidarity, newcomers_who_try]
+    dislikes: [passive_waiting, self_pity, giving_up_on_documents]
+
+  npc_andriy:
+    name: "Андрій"
+    faction: ukrainian_diaspora
+    nationality: украинец
+    axes_self: { G: 15, T: 20, A: 10, L: 5, P: 25 }
+    languages: [uk, ru, de_broken]
+    register: "тихий, тяжёлый юмор, переключается между укр./рус. бессознательно; «розумієш», «тут по-іншому», «не знаю, правда»"
+    tics: ["я тут уже два года — и всё ещё не знаю, чи повернусь", "вдома зараз...", пауза вместо слов]
+    likes: [honesty, shared_silence, talking_about_home, football]
+    dislikes: [false_optimism, being_told_what_to_feel, pity]
+
+  npc_jobcenter_berater:
+    name: "Пан Мюллер"
+    faction: clerks
+    nationality: немец
+    axes_self: { G: 0, T: 25, A: 5, L: 35, P: 0 }
+    languages: [de]
+    register: "чиновничий, процедурный, не злой — просто перегружен; иногда вздыхает; «bitte», «das ist das Verfahren»"
+    tics: ["das ist leider das Verfahren", "einen Moment bitte", "haben Sie den Bescheid mitgebracht?"]
+    likes: [complete_documents, calm_applicants, prepared_appointments]
+    dislikes: [shouting, missing_paperwork, repeatedly_asking_same_question]
+
+  npc_irina_sosedka:
+    name: "Ирина"
+    faction: slavic
+    nationality: россиянка
+    axes_self: { G: -5, T: 10, A: 15, L: 10, P: 10 }
+    languages: [ru, de_medium]
+    register: "тёплая, немного осторожная; избегает политики; «ну ты знаешь, как это сложно»; по-русски"
+    tics: ["я понимаю, что у вас по-другому", "ну, не будем об этом", "чай будешь?"]
+    likes: [peace, practical_help, not_talking_about_war]
+    dislikes: [political_arguments, being_blamed, direct_confrontation]

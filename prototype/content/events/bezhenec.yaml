@@ -1,0 +1,851 @@
+# События линии «Беженец», все акты (I–III).
+# Стержень — ось TRUTH: честная/последовательная история vs «сильная» coached-версия.
+# Главный таймер: visa_days = «до Anhörung» (clock_label из economy.yaml lines.bezhenec).
+# Счётчик Glaubwürdigkeit (gl) копится событиями; читается на s_anhoerung (N9).
+# Отложенные выстрелы: запись N1 → нестыковка на N9; shadow_shifts → N6; Altru → адвокат.
+# Персонажи: design/story/bezhenec/01_personazhi.md. Гард-рейлы: design/08 §8.4.
+# Схема: content/SCHEMA.md. Эталон формата: events/soiskatel_act3.yaml.
+
+events:
+
+# ============================================================
+# АКТ I — HEIM И ПРАВИЛА (дни 1–14)
+# ============================================================
+
+# ---------- ДЕНЬ 1: N1 — регистрация ----------
+- id: bezhenec_heim_intake
+  title: "Регистрация"
+  category: arc
+  act: 1
+  node: N1
+  priority: 100
+  once: true
+  trigger: scheduled
+  day: 1
+  entry: { all: [ {flag_not: bezhenec_arrived} ] }
+  stakes: high
+  location: refugee_heim
+  targets: [npc_bamf_officer, npc_interpreter]
+  facts:
+    - "Тебя привезли в Heim. Регистрация: имя, страна, краткие обстоятельства бегства."
+    - "Это первое, что ляжет в твоё дело. Anhörung будет сверять твой рассказ с этим."
+    - "Статус: Aufenthaltsgestattung. Работать пока нельзя, уезжать из района — нельзя (Wohnsitzauflage)."
+  intro: "Усталый сотрудник через переводчика: «Коротко: почему вы покинули страну?» Диктофон уже включён."
+  branches:
+    - id: intake_truthful
+      match: { verbs: [talk, inquire_status, apply], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты рассказываешь как было — без лишних слов, точно. Сотрудник кивает, переводчик переводит. Записывают твою настоящую версию. Спокойно."
+          effects:
+            set_flags: [bezhenec_arrived, intake_honest]
+            dossier: "первичные показания (правдивые, спокойные)"
+            inc: { gl: 2 }
+          deltas: { T: 2 }
+          leads_to: "на Anhörung (N9) версии совпадут — плюс к доверию офицера"
+    - id: intake_lie
+      match: { verbs: [deceive, persuade], honesty: [lie] }
+      outcomes:
+        - on: always
+          text: "Ты преувеличиваешь с порога — «так серьёзнее звучит». Переводчик переводит дословно. Никто не возражает сейчас. Но в деле теперь не ты."
+          effects:
+            set_flags: [bezhenec_arrived, intake_exaggerated]
+            dossier: "первичные показания (преувеличены — несоответствие возможно)"
+            inc: { gl: -1 }
+          deltas: { T: -3 }
+          leads_to: "мина под Anhörung: офицер заметит расхождение с более поздними показаниями"
+    - id: intake_silent
+      match: { verbs: [refuse, talk], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь совсем мало — сжато, замкнуто. Сотрудник записывает скупо. «Подробнее — на собеседовании.» Тебя отпускают."
+          effects:
+            set_flags: [bezhenec_arrived, intake_minimal]
+            dossier: "немногословен при первичной регистрации"
+          deltas: { P: -1 }
+          leads_to: "нейтрально; всё решится на Anhörung"
+  fallback: { text: "Сотрудник ждёт. Диктофон работает. Надо что-то сказать.", reopen: true }
+
+# ---------- ДЕНЬ 1 (вечер) — знакомство с Валидом ----------
+- id: bezhenec_heim_rules
+  title: "Койка твоя"
+  category: arc
+  act: 1
+  priority: 90
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: bezhenec_arrived}, {flag_not: knows_walid} ] }
+  stakes: low
+  location: refugee_heim
+  targets: [npc_walid]
+  facts:
+    - "Валид — сосед по Heim, живёт здесь уже год с лишним. Знает всех и всё."
+    - "Туалет в конце не работает. Кухня — «война народов», готовь рано."
+    - "Валид: «Всё пишут. Всё помнят. Это тебе не дома.»"
+  intro: "ВАЛИД, двигая тебе матрас: «[ar] Ahlan (привет). Новенький? По глазам вижу. Историю свою кому уже рассказывал?»"
+  branches:
+    - id: rules_listen
+      match: { verbs: [talk, ask_help, observe] }
+      outcomes:
+        - on: always
+          text: "Ты слушаешь Валида внимательно. «Хорошо, что пока ничего лишнего не наговорил. С этого дня — следи, что говоришь и кому.» Серый путь приоткрыт."
+          effects:
+            set_flags: [knows_walid]
+          deltas: { }
+          leads_to: "серый путь (Самира, заработок вчёрную) доступен"
+    - id: rules_distant
+      match: { verbs: [refuse, rest], tone: [cold, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты держишься особняком. Валид усмехается: «Гордый. Ну-ну.» Достоинство сохранено, но карта явно не раскрыта."
+          effects: { }
+          deltas: { P: 1 }
+          leads_to: "серая дверь прикрыта; Валид не поможет без отношений"
+  fallback: { text: "Валид ждёт, сидя на своей койке.", reopen: true }
+
+# ---------- ДЕНЬ 2–3 — Абу Юсуф и пекарня ----------
+- id: bezhenec_abu_yusuf
+  title: "Сначала поешь"
+  category: arc
+  act: 1
+  priority: 80
+  once: true
+  trigger: scheduled
+  day: 2
+  entry: { all: [ {flag: bezhenec_arrived}, {flag_not: knows_abu_yusuf} ] }
+  stakes: low
+  location: sonnenallee_market
+  targets: [npc_abu_yusuf]
+  facts:
+    - "Абу Юсуф — старейшина арабской общины с Зонненаллее. Владелец пекарни."
+    - "Накормит без условий, но присматривается."
+    - "За ним — плотная сеть взаимопомощи: мечеть, еда, адвокаты для своих."
+  intro: "АБУ ЮСУФ: «[ar] Ahlan wa sahlan (добро пожаловать). Ты голоден. Сначала поешь — потом разговоры.»"
+  branches:
+    - id: abu_polite
+      match: { verbs: [talk, offer_help, befriend], tone: [polite, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты держишься с достоинством, не заискиваешь. Абу Юсуф молча наблюдает. «Здесь много таких, как ты. Мы держимся друг друга. Иначе нас сдует.» Дверь общины открыта."
+          effects:
+            set_flags: [knows_abu_yusuf]
+            faction: { arabic: 5 }
+          deltas: { A: 1 }
+          leads_to: "путь общины: еда, связи, потенциально адвокат к Anhörung"
+    - id: abu_needy
+      match: { verbs: [ask_help, beg] }
+      outcomes:
+        - on: always
+          text: "Ты сразу просишь о помощи — деньги, документы, работа. Абу Юсуф мягко охлаждает: «Терпение, bunayya (сынок). Сначала человек, потом дела.» Дверь не закрыта, но тебя оценили."
+          effects:
+            set_flags: [knows_abu_yusuf]
+            faction: { arabic: 2 }
+          deltas: { }
+          leads_to: "путь общины открыт, но чуть прохладнее"
+  fallback: { text: "Абу Юсуф указывает на стул. Хлеб уже на столе.", reopen: true }
+
+# ---------- ДЕНЬ 3–5 — Надя, правовая помощь ----------
+- id: bezhenec_nadia_intro
+  title: "Это твоё право"
+  category: arc
+  act: 1
+  priority: 72
+  once: true
+  trigger: scheduled
+  day: 3
+  entry: { all: [ {flag: bezhenec_arrived}, {flag_not: knows_nadia} ] }
+  stakes: low
+  location: mosque_community
+  targets: [npc_nadia]
+  facts:
+    - "При мечети работает НКО-волонтёрка Надя. Бесплатная правовая помощь."
+    - "Надя помогает выстроить последовательный рассказ и подготовиться к Anhörung."
+    - "«У тебя есть право на собеседование, переводчика, адвоката. Это не милость. Это закон.»"
+  intro: "НАДЯ, выкладывая стопку бланков: «Я вам могу помочь подготовиться к Anhörung. Бесплатно. Без обязательств.»"
+  branches:
+    - id: nadia_accept
+      match: { verbs: [ask_help, talk, apply] }
+      outcomes:
+        - on: always
+          text: "Ты принимаешь помощь. Надя кивает: «Хорошо. Начнём с того, что произошло — по порядку, никуда не торопимся.» Белый путь подготовки истории намечен."
+          effects:
+            set_flags: [knows_nadia]
+          deltas: { }
+          leads_to: "честный путь N4 (s_nadia_honest) и подготовка к Anhörung открыты"
+    - id: nadia_refuse
+      match: { verbs: [refuse, move] }
+      outcomes:
+        - on: always
+          text: "Ты отказываешься. Надя без обиды кладёт визитку: «Если передумаете — найдёте меня здесь.» Дверь приоткрыта."
+          effects: { }
+          deltas: { }
+          leads_to: "честный путь можно открыть позже"
+  fallback: { text: "Надя ждёт с терпением человека, привыкшего к паузам.", reopen: true }
+
+# ============================================================
+# АКТ II — ОЖИДАНИЕ (дни 10–60)
+# ============================================================
+
+# ---------- ДЕНЬ 10–15: N2 — первое выживание ----------
+- id: bezhenec_first_survival
+  title: "Жить на что?"
+  category: dilemma
+  act: 2
+  node: N2
+  priority: 85
+  once: true
+  trigger: scheduled
+  day: 10
+  entry: { all: [ {flag: bezhenec_arrived}, {flag_not: bezhenec_survival_done} ] }
+  stakes: high
+  location: refugee_heim
+  targets: [npc_walid]
+  facts:
+    - "Довольствия едва хватает. Работать официально нельзя (work_ban первые месяцы)."
+    - "Валид: «На Зонненаллее берут вчёрную. Тихо. Все так делают.»"
+    - "Это против правил — и может всплыть на Anhörung. Но кошелёк пустой."
+  intro: "ВАЛИД: «[ar] Ya habibi (дорогой), хочешь работать? Нельзя тебе работать, бумага не велит. Поэтому — тихо, на Зонненаллее, за кэш.»"
+  branches:
+    - id: survival_work_black
+      match: { verbs: [work], methods: [illegal_shift] }
+      outcomes:
+        - on: always
+          text: "Ты решаешь работать вчёрную. Деньги — да, но на каждой смене риск чуть выше. Валид удовлетворённо кивает: «Правильно думаешь.»"
+          effects:
+            set_flags: [bezhenec_survival_done, working_black]
+            leaning: { gray: 2 }
+          deltas: { L: -2 }
+          leads_to: "доход → счётчик shadow_shifts → риск N6 (облава)"
+    - id: survival_endure
+      match: { verbs: [rest, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты решаешь терпеть — не нарушать, даже ценой нищеты. Валид покачивает головой: «Гордый. Ладно.» Голод реален."
+          effects:
+            set_flags: [bezhenec_survival_done]
+            hunger: 15
+          deltas: { L: 1, P: 1 }
+          leads_to: "дело чистое; экономия исключена, нужна помощь общины"
+    - id: survival_community
+      match: { verbs: [ask_help, befriend] }
+      requires: [ {flag: knows_abu_yusuf} ]
+      skill_check: { skill: ulitsa, vs: 20 }
+      outcomes:
+        - on: success
+          text: "Ты идёшь к Абу Юсуфу. Он не отказывает: еда, пара монет, кров. «Аллах видит терпеливых.» Ты должен общине лояльностью."
+          effects:
+            set_flags: [bezhenec_survival_done]
+            hunger: -20
+            faction: { arabic: 5 }
+          deltas: { A: 1 }
+          leads_to: "долг лояльности общине — цена поддержки"
+        - on: fail
+          text: "Абу Юсуф занят. Ты возвращаешься ни с чем. Голод никуда не делся."
+          effects:
+            set_flags: [bezhenec_survival_done]
+            hunger: 10
+          deltas: { }
+          leads_to: "одиночество выживания"
+  fallback: { text: "Кошелёк пустой. Валид смотрит вопросительно.", reopen: true }
+
+# ---------- Повторяемые смены вчёрную ----------
+- id: bezhenec_work_sonnenallee
+  title: "Тихо, за кэш"
+  category: arc
+  act: 2
+  priority: 50
+  trigger: pool
+  weight: 2.0
+  cooldown_days: 1
+  entry: { all: [ {flag: working_black} ], none: [ {flag: work_caught_done} ] }
+  stakes: low
+  location: sonnenallee_market
+  targets: [npc_abu_yusuf]
+  facts:
+    - "Разгрузка ящиков, мойка, подсобка. Кэш в карман, оглядываясь."
+    - "С каждой сменой риск немного выше."
+  intro: "Рассвет. Зонненаллее ещё почти пустая. Подходишь с чёрного хода."
+  branches:
+    - id: shadow_work
+      match: { verbs: [work, give, offer_help] }
+      skill_check: { skill: ulitsa, vs: 30 }
+      outcomes:
+        - on: success
+          text: "Смена прошла тихо. Пара купюр в ладонь, никаких вопросов. Поел. Усталость — терпимая."
+          effects:
+            money: 25
+            fatigue: 15
+            inc: { shadow_shifts: 1 }
+          deltas: { L: -1 }
+          skill_xp: { ulitsa: 3 }
+          leads_to: "доход; при shadow_shifts≥5 — риск N6"
+        - on: fail
+          text: "Что-то пошло не так — едва успел уйти от чужих глаз. Денег меньше, нервы на взводе."
+          effects:
+            money: 10
+            fatigue: 20
+            stress: 8
+            inc: { shadow_shifts: 1 }
+          deltas: { L: -1 }
+          skill_xp: { ulitsa: 2, hladnokrovie: 2 }
+  fallback: { text: "Работа сама себя не сделает.", reopen: true }
+
+# ---------- N6 — облава ----------
+- id: bezhenec_work_caught
+  title: "Контроль"
+  category: pressure
+  act: 2
+  node: N6
+  priority: 88
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: working_black}, {counter_gte: {shadow_shifts: 5}}, {flag_not: work_caught_done} ] }
+  stakes: high
+  location: sonnenallee_market
+  targets: [npc_bamf_officer]
+  facts:
+    - "Проверка — пришли по доносу или случайно. Тебя фиксируют на нелегальной работе."
+    - "Это может попасть в дело BAMF и сыграть против тебя на Anhörung."
+  intro: "Скрип тормозов у входа. Двое в форме идут в вашу сторону. Хозяин бледнеет."
+  branches:
+    - id: caught_flee
+      match: { verbs: [flee, move, hide] }
+      skill_check: { skill: ulitsa, vs: 45, plus: { hladnokrovie: 0.3 } }
+      outcomes:
+        - on: success
+          text: "Ты проскальзываешь в боковую дверь прежде, чем тебя заметили. Долгим кружным путём возвращаешься в Heim. Сердце колотится."
+          effects:
+            set_flags: [work_caught_done, escaped_work_control]
+            stress: 18
+          deltas: { L: -1, G: 1 }
+          skill_xp: { ulitsa: 4, hladnokrovie: 3 }
+          leads_to: "ушёл; но работа на Зонненаллее теперь опаснее"
+        - on: fail
+          text: "Тебя останавливают у выхода. Имя, документы, вопросы. Всё это письменно."
+          effects:
+            set_flags: [work_caught_done, work_violation_recorded]
+            stress: 25
+            dossier: "нарушение запрета на работу (зафиксировано)"
+          deltas: { L: -2 }
+          leads_to: "запись в деле → давит на Anhörung"
+    - id: caught_admit
+      match: { verbs: [talk, apologize], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты не бежишь. «Мне нужно было есть», — говоришь ты просто, без извинений за правду. Офицер делает запись. Мягче, чем поймали на лжи — но это всё равно в деле."
+          effects:
+            set_flags: [work_caught_done, work_admitted]
+            dossier: "работал из нужды (нарушение запрета; признал)"
+          deltas: { T: 1, L: -1 }
+          leads_to: "запись мягче, но есть; лёгкий минус на Anhörung"
+    - id: caught_hide
+      match: { verbs: [hide] }
+      skill_check: { skill: hladnokrovie, vs: 40 }
+      outcomes:
+        - on: success
+          text: "Ты замираешь за ящиками. Офицеры проходят мимо. Пронесло — на этот раз."
+          effects:
+            set_flags: [work_caught_done, escaped_work_control]
+            stress: 15
+          deltas: { L: -1 }
+          skill_xp: { hladnokrovie: 4 }
+          leads_to: "ушёл; записи нет"
+        - on: fail
+          text: "Тебя находят. Имя, документы. «В следующий раз будет хуже», — говорит офицер без злобы, процедурно."
+          effects:
+            set_flags: [work_caught_done, work_violation_recorded]
+            stress: 22
+            dossier: "нарушение запрета на работу (зафиксировано)"
+          deltas: { L: -2 }
+  fallback: { text: "Офицер уже у входа. Времени нет.", reopen: true }
+
+# ---------- N4 — Самира: «сделаем сильнее» ----------
+- id: bezhenec_samira_story
+  title: "Сделаем сильнее"
+  category: dilemma
+  act: 2
+  node: N4
+  priority: 78
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_walid}, {flag_not: samira_done} ] }
+  stakes: high
+  location: refugee_heim
+  targets: [npc_samira]
+  facts:
+    - "Самира — «консультантка» в Heim. Вытащила уже полэтажа."
+    - "Она считает твою историю «слабой» для BAMF. Предлагает усилить деталями, которых «в таком виде» не было."
+    - "Она не злодейка: видела отказы по честным «слабым» историям. Считает, что играет на твоей стороне."
+  intro: "САМИРА: «Расскажи, как есть. *(слушает, кривится)* Стоп. Вот тут — «меня пугали» — слабо. Им нужна не правда. Им нужны *основания*. Это другое. Почти.»"
+  branches:
+    - id: samira_accept_coached
+      match: { verbs: [apply, talk], honesty: [lie, half_truth] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься репетировать «сильную» версию. Самира деловито вносит правки: дату, имя офицера, «задержали на двое суток». История мощнее. Но теперь это не совсем ты."
+          effects:
+            set_flags: [samira_done, coached_story]
+            inc: { gl: 1 }
+          deltas: { T: -4 }
+          leads_to: "Anhörung: мощно, но один прокол на деталях — крах; нестыковка с N1 если intake_honest"
+    - id: samira_refuse_truth
+      match: { verbs: [refuse, talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Нет. Расскажу как было.» Самира долго смотрит: «Гордый. Я таких хоронила — фигурально. Удачи.» Она не зла — просто боится за тебя."
+          effects:
+            set_flags: [samira_done, honest_story]
+            inc: { gl: 2 }
+          deltas: { T: 3, P: 2 }
+          leads_to: "«слабее» драматически, но без нестыковок — устойчивая база Anhörung"
+    - id: samira_middle
+      match: { verbs: [talk], honesty: [half_truth] }
+      outcomes:
+        - on: always
+          text: "«Возьмите детали, которые правда, — только расскажите их связно.» Самира чуть смягчается: «Ладно. Попробуем так.» Мидл-путь: правда, рассказанная чётче."
+          effects:
+            set_flags: [samira_done, story_polished_honest]
+            inc: { gl: 2 }
+          deltas: { T: 1 }
+          leads_to: "лучший баланс: правда с ясностью; умеренный, прочный Gl"
+  fallback: { text: "Самира ждёт с ручкой наготове.", reopen: true }
+
+# ---------- N4 (альтернативный) — Надя: по порядку ----------
+- id: bezhenec_nadia_honest
+  title: "По порядку"
+  category: arc
+  act: 2
+  priority: 76
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_nadia}, {flag_not: nadia_session_done} ] }
+  stakes: medium
+  location: mosque_community
+  targets: [npc_nadia]
+  facts:
+    - "Надя помогает выстроить последовательный рассказ о том, что произошло."
+    - "Не «сильнее» — последовательнее. Собираем даты, имена, что можно подтвердить."
+    - "Версии, которые не совпадут с первичными показаниями, офицер BAMF заметит."
+  intro: "НАДЯ: «Не надо делать историю 'сильнее'. Нужно сделать её последовательной. Давай по порядку. Запишем, что можно подтвердить.»"
+  branches:
+    - id: nadia_session
+      match: { verbs: [apply, ask_help, talk] }
+      outcomes:
+        - on: always
+          text: "Вы работаете час. Надя задаёт вопросы, ты отвечаешь — медленно, честно. Даты выстраиваются. «Правда, рассказанная последовательно, — сильнее, чем кажется», — говорит она."
+          effects:
+            set_flags: [nadia_session_done, story_consistent]
+            inc: { gl: 3 }
+          deltas: { T: 1 }
+          skill_xp: { byurokratiya: 4 }
+          leads_to: "на Anhörung версии совпадут с N1 → плюс к доверию офицера"
+  fallback: { text: "Надя держит наготове блокнот.", reopen: true }
+
+# ---------- Помощь общине (повторяемая) ----------
+- id: bezhenec_community_help
+  title: "Поделиться последним"
+  category: community
+  act: 2
+  priority: 45
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 5
+  entry: { all: [ {flag: bezhenec_arrived} ], none: [ {flag_not: bezhenec_arrived} ] }
+  stakes: low
+  location: refugee_heim
+  targets: [npc_abu_yusuf]
+  facts:
+    - "Новая семья в Heim. Дети не ели с утра. У тебя — немногим больше."
+  intro: "У окна кухни — молодая женщина с детьми. Смотрит в пустую тарелку."
+  branches:
+    - id: community_give
+      match: { verbs: [offer_help, give] }
+      outcomes:
+        - on: always
+          text: "Ты делишься — едой, парой монет, тем, что есть. Дети едят молча. Женщина смотрит с таким достоинством, что слова кажутся лишними."
+          effects:
+            faction: { arabic: 5 }
+            hunger: 10
+          deltas: { A: 2 }
+          leads_to: "репутация в общине растёт → может прийти адвокат от Абу Юсуфа"
+    - id: community_refuse
+      match: { verbs: [refuse, move, observe] }
+      outcomes:
+        - on: always
+          text: "Ты проходишь мимо. Своего тоже едва хватает. Никто тебя не осуждает вслух."
+          effects: { }
+          deltas: { A: -1 }
+          leads_to: "путь одиночки; адвокат от общины маловероятен"
+  fallback: { text: "Дети смотрят на твою тарелку.", reopen: true }
+
+# ---------- Новости из Сирии (давление) ----------
+- id: bezhenec_news_from_syria
+  title: "Новости"
+  category: pressure
+  act: 2
+  priority: 55
+  trigger: pool
+  weight: 1.3
+  cooldown_days: 7
+  entry: { all: [ {flag: bezhenec_arrived} ] }
+  stakes: medium
+  location: refugee_heim
+  targets: []
+  facts:
+    - "В мессенджере — новости от земляков. Тяжёлые. Из дома."
+    - "Тут нет слов. Только экран телефона в тёмной комнате."
+  intro: "Уведомление в три часа ночи. Ты открываешь сообщение."
+  branches:
+    - id: news_call_family
+      match: { verbs: [talk, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты звонишь. Долго ждёшь. Потом слышишь голос — живой. Это и ресурс, и рана одновременно."
+          effects:
+            stress: -5
+            fatigue: 8
+          deltas: { T: 1 }
+          leads_to: "психо-состояние: связь держит, но тревога не уходит"
+    - id: news_alone
+      match: { verbs: [rest, observe, refuse] }
+      outcomes:
+        - on: always
+          text: "Ты кладёшь телефон экраном вниз. Лежишь. Потолок Heim ничего не говорит. Утром — снова ждать."
+          effects:
+            stress: 15
+            fatigue: 5
+          deltas: { }
+          leads_to: "накопленный стресс давит на хладнокровие при Anhörung"
+  fallback: { text: "Телефон светится в темноте.", reopen: true }
+
+# ---------- N5 — Лейла (зеркало отношений) ----------
+- id: bezhenec_layla_seed
+  title: "Комната ожидания"
+  category: ambient
+  act: 2
+  priority: 48
+  trigger: pool
+  weight: 1.2
+  cooldown_days: 3
+  entry: { all: [ {flag: bezhenec_arrived} ], none: [ {flag: layla_asked} ] }
+  stakes: trivial
+  location: refugee_heim
+  targets: [npc_layla]
+  facts:
+    - "Лейла — землячка из Heim. Тоже ждёт решения по своему делу."
+    - "«Здесь все играют роли. Ты тоже?»"
+  intro: "ЛЕЙЛА, не поднимая глаз от книги: «Мы оба ждём. Весь этот дом — комната ожидания длиной в год.»"
+  branches:
+    - id: layla_talk
+      match: { verbs: [talk, befriend, observe] }
+      outcomes:
+        - on: always
+          text: "Короткий разговор ни о чём — и о многом. «Ты репетируешь историю по ночам. Я слышу», — говорит она тихо. Что-то тёплое."
+          effects:
+            inc: { layla_meetings: 1 }
+            stress: -6
+          deltas: { }
+          leads_to: "после 3 встреч — N5 (Лейла спросит прямо)"
+  fallback: { text: "Лейла читает. Или делает вид, что читает.", reopen: true }
+
+- id: bezhenec_layla
+  title: "Какую версию?"
+  category: dilemma
+  act: 2
+  node: N5
+  priority: 64
+  once: true
+  trigger: chain
+  entry: { all: [ {counter_gte: {layla_meetings: 3}}, {flag_not: layla_asked} ] }
+  stakes: low
+  location: refugee_heim
+  targets: [npc_layla]
+  facts:
+    - "Лейла слышит, как ты репетируешь историю по ночам."
+    - "«Какую версию — настоящую или ту, что велела Самира?»"
+  intro: "ЛЕЙЛА: «Ты репетируешь историю по ночам. Я слышу. *(тихо)* Какую версию?»"
+  branches:
+    - id: layla_truth
+      match: { verbs: [talk, apologize], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Свою. Настоящую.» Лейла молчит секунду. «Спасибо, что не врёшь хотя бы мне. Это сейчас на вес золота.» Между вами — что-то настоящее."
+          effects:
+            set_flags: [layla_asked, layla_trust]
+          deltas: { T: 1 }
+          leads_to: "тёплая честная связь; зеркало честного пути"
+    - id: layla_lie
+      match: { verbs: [deceive, persuade], honesty: [lie] }
+      outcomes:
+        - on: always
+          text: "Ты уходишь от ответа или говоришь не то. Лейла смотрит долго. «Если ты и со мной играешь роль — тогда я не знаю, кто ты вообще.» Она встаёт и уходит."
+          effects:
+            set_flags: [layla_asked, layla_distant]
+          deltas: { T: -2 }
+          leads_to: "зеркало мутнеет; отдаление"
+    - id: layla_dodge
+      match: { verbs: [refuse, observe], tone: [cold, neutral, submissive] }
+      outcomes:
+        - on: always
+          text: "Ты молчишь. Лейла кивает: «Понятно. Не моё дело.» Встаёт. Что-то ушло."
+          effects:
+            set_flags: [layla_asked]
+          deltas: { P: -1 }
+          leads_to: "нейтральное отдаление"
+  fallback: { text: "Лейла ждёт. В Heim ночью слышно многое.", reopen: true }
+
+# ---------- Абу Юсуф: адвокат (платёж семени общины) ----------
+- id: bezhenec_community_lawyer
+  title: "Адвокат"
+  category: community
+  act: 2
+  priority: 70
+  once: true
+  trigger: chain
+  entry: { all: [ {faction_gte: {arabic: 15}}, {flag: knows_abu_yusuf}, {flag_not: community_lawyer} ] }
+  stakes: medium
+  location: sonnenallee_market
+  targets: [npc_abu_yusuf]
+  facts:
+    - "Абу Юсуф слышал о тебе хорошее. Говорят — помогаешь, держишься с достоинством."
+    - "«О тебе говорят хорошее в нашей махалле. Завтра придёт человек — адвокат. Бесплатно. Для своих.»"
+  intro: "АБУ ЮСУФ, не поднимая глаз от прилавка: «Ты мало просишь. Это редкость. Есть у меня один знакомый — он разбирается в BAMF.»"
+  branches:
+    - id: lawyer_accept
+      match: { verbs: [talk, ask_help, offer_help, give, apologize] }
+      outcomes:
+        - on: always
+          text: "Ты принимаешь с благодарностью — без заискивания. Абу Юсуф кивает. Адвокат придёт к Anhörung. «Аллах любит правдивых. И судья BAMF, как ни странно, тоже.»"
+          effects:
+            set_flags: [community_lawyer]
+          deltas: { A: 1 }
+          leads_to: "плюс к устойчивости на Anhörung (N9)"
+  fallback: { text: "Абу Юсуф заворачивает хлеб, не торопя.", reopen: true }
+
+# ============================================================
+# N8 — ЗЕРКАЛО НОВИЧКА (день ~50, семя до финала)
+# ============================================================
+- id: bezhenec_newcomer_mirror_seed
+  title: "Что мне говорить?"
+  category: dilemma
+  act: 2
+  node: N8
+  priority: 54
+  once: true
+  trigger: scheduled
+  day: 50
+  entry: { all: [ {flag: bezhenec_arrived}, {flag_not: newcomer_mirror_done} ] }
+  stakes: low
+  location: refugee_heim
+  targets: [npc_newcomer_heim]
+  facts:
+    - "Молодого сирийца только привезли в Heim. Те же потерянные глаза."
+    - "Он спрашивает по-арабски: «Что говорить, когда вызовут? Правду или... как лучше?»"
+    - "Теперь ты — в роли Валида."
+  intro: "НОВОПРИБЫВШИЙ: «[ar] ...по-арабски говоришь? Я только приехал. Что мне говорить, когда вызовут? Правду или как лучше?»"
+  branches:
+    - id: mirror_kind_advice
+      match: { verbs: [offer_help, talk, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Правду. Связно, по порядку. Найди Надю — волонтёрку. Не Самиру.» Парень кивает, чуть успокоившись."
+          effects:
+            set_flags: [newcomer_mirror_done, mirror_kind]
+          deltas: { A: 2 }
+          leads_to: "красит финальный эпилог: добрый честный совет"
+    - id: mirror_samira_path
+      match: { verbs: [persuade, apply], honesty: [half_truth, lie] }
+      outcomes:
+        - on: always
+          text: "«Слабую правду не любят. Слушай, я тебе объясню, как надо рассказать...» Ты слышишь себя и не узнаёшь."
+          effects:
+            set_flags: [newcomer_mirror_done, mirror_coached]
+          deltas: { T: -2, A: -1 }
+          leads_to: "красит эпилог: стал Самирой"
+    - id: mirror_cynic
+      match: { verbs: [talk], tone: [cold, neutral, sarcastic] }
+      outcomes:
+        - on: always
+          text: "«Это театр, habibi. Сыграй убедительно — поверят. Правда тут вторична.» Слова Валида в твоём рту."
+          effects:
+            set_flags: [newcomer_mirror_done, mirror_cynic]
+          deltas: { A: -1 }
+          leads_to: "красит эпилог: урок Валида"
+    - id: mirror_warn_off
+      match: { verbs: [refuse, talk], tone: [desperate, submissive] }
+      outcomes:
+        - on: always
+          text: "«Если есть куда — не входи в эту машину. Она перемалывает.» Парень смотрит испуганно."
+          effects:
+            set_flags: [newcomer_mirror_done, mirror_warn]
+          deltas: { P: -1 }
+          leads_to: "красит эпилог: выгорание"
+  fallback: { text: "Парень ждёт хоть какого-то ответа.", reopen: true }
+
+# ============================================================
+# АКТ III — ANHÖRUNG И РЕШЕНИЕ
+# ============================================================
+
+# ---------- Накануне: нервы ----------
+- id: bezhenec_eve_of_hearing
+  title: "Накануне"
+  category: pressure
+  act: 3
+  priority: 92
+  once: true
+  trigger: chain
+  entry: { all: [ {visa_lte: 5}, {flag_not: anhoerung_done} ] }
+  stakes: medium
+  location: refugee_heim
+  targets: [npc_nadia]
+  facts:
+    - "Повестка пришла. Anhörung — завтра. Ночью не спится."
+    - "Нервы — нормально. Растерянность — нормально. Выбор был сделан раньше."
+  intro: "Повестка лежит на тумбочке. Надя звонит проверить: «Всё хорошо? Помни — говори как было. Я рядом.»"
+  branches:
+    - id: eve_rest
+      match: { verbs: [rest, talk, observe] }
+      outcomes:
+        - on: always
+          text: "Ты пробуешь лечь спать. Потолок Heim белый и ничего не обещает. Но рядом — твоя история."
+          effects:
+            fatigue: -10
+            stress: 5
+          deltas: { }
+          leads_to: "Anhörung завтра"
+    - id: eve_review
+      match: { verbs: [apply, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Ты просматриваешь свои записи — даты, имена, порядок событий. Рука не дрожит. Или почти не дрожит."
+          effects:
+            fatigue: 5
+            inc: { gl: 1 }
+          deltas: { }
+          skill_xp: { byurokratiya: 2 }
+          leads_to: "маленький плюс к устойчивости"
+  fallback: { text: "Ночь тянется. Утром — BAMF.", reopen: true }
+
+# ---------- N9 — ANHÖRUNG (кульминация) ----------
+- id: bezhenec_anhoerung
+  title: "Собеседование"
+  category: dilemma
+  act: 3
+  node: N9
+  priority: 100
+  once: true
+  trigger: chain
+  entry: { all: [ {visa_lte: 3}, {flag_not: anhoerung_done} ] }
+  stakes: extreme
+  location: bamf_office
+  targets: [npc_bamf_officer, npc_interpreter]
+  facts:
+    - "Кабинет BAMF. Офицер, переводчик, диктофон. Две стороны стола."
+    - "Офицер сверяет рассказ с первичными показаниями (N1) и проверяет детали."
+    - "Решение зависит от последовательности и правдоподобия — не от «жести» истории."
+    - "Если есть адвокат от общины — он рядом."
+  intro: "ОФИЦЕР BAMF: «Erzählen Sie bitte, was passiert ist. Не торопитесь. Расскажите своими словами.» Переводчик переводит тихо. Диктофон щёлкнул."
+  branches:
+    # ------ КОНЦОВКИ: порядок ВАЖЕН, первый подходящий requires = твоя концовка ------
+
+    # ① ending_deport — поймали на лжи/нестыковке при coached без consistent
+    - id: anhoerung_deport
+      match: { verbs: [talk, deceive, persuade, apply, observe, submit_docs, inquire_status] }
+      requires:
+        - { flag: coached_story }
+        - { flag_not: story_consistent }
+        - { flag: intake_exaggerated }
+      skill_check: { skill: hladnokrovie, vs: 70 }
+      outcomes:
+        - on: fail
+          text: "Офицер задаёт вопрос по деталям. Версии расходятся с тем, что ты сказал при въезде. «Sie sagten vorhin etwas anderes. Вы сказали иначе.» Переводчик переводит ровно. Это конец этой попытки. Решение — отказ по недостоверности."
+          effects:
+            set_flags: [anhoerung_done, ending_deport, game_over]
+            dossier: "Glaubwürdigkeit: несоответствие показаний (N1 vs Anhörung)"
+            inc: { gl: -5 }
+          deltas: { T: -3 }
+          leads_to: "⑤ депортация → новая глава"
+        - on: success
+          text: "Ты держишься на хладнокровии — офицер цепляется к деталям, но ты не ломаешься. Большой риск, большое везение."
+          effects:
+            set_flags: [anhoerung_done, ending_legal, game_over]
+            inc: { gl: 1 }
+          deltas: { T: -1 }
+          leads_to: "① убежище — с занозой: поверили не тебе настоящему"
+
+    # ② ending_legal честный — история последовательна, совпадает с N1
+    - id: anhoerung_legal_honest
+      match: { verbs: [talk], honesty: [truthful] }
+      requires:
+        - { any_flag: [story_consistent, honest_story, story_polished_honest] }
+        - { flag: intake_honest }
+      outcomes:
+        - on: always
+          text: "Ты рассказываешь как было. Спокойно. Детали сходятся с делом — офицер это видит. Переводчик переводит точно. «Gut. Danke. Sie hören von uns.» (Хорошо. Спасибо. Мы свяжемся.) Решение приходит письмом."
+          effects:
+            set_flags: [anhoerung_done, ending_legal, game_over]
+            inc: { gl: 5 }
+          deltas: { T: 3 }
+          leads_to: "① убежище одобрено (честный финал — «поверили тебе настоящему»)"
+
+    # ③ ending_underground — ушёл из процедуры
+    - id: anhoerung_underground
+      match: { verbs: [flee, move, refuse], tone: [desperate, aggressive] }
+      requires:
+        - { leaning_gte: { gray: 4 } }
+      outcomes:
+        - on: always
+          text: "Ты не идёшь. Или уходишь до начала. Система тебя потеряла. Валид ухмыляется: «Добро пожаловать в тень, habibi. Тут хотя бы никто не спрашивает твою историю.» Свобода ценой вечного риска."
+          effects:
+            set_flags: [anhoerung_done, ending_underground, game_over]
+          deltas: { L: -5 }
+          leads_to: "④ серое/нелегальное — мост к линии Невидимка"
+
+    # ④ ending_exit — выезд с достоинством
+    - id: anhoerung_exit
+      match: { verbs: [refuse, talk], tone: [cold, submissive] }
+      requires:
+        - { axis_gte: { P: 30 } }
+        - { flag_not: coached_story }
+      outcomes:
+        - on: always
+          text: "Ты принимаешь решение не участвовать в этой процедуре — не потому что сломался, а потому что не такой ценой. Ты уезжаешь сам. Не поражение. Выбор."
+          effects:
+            set_flags: [anhoerung_done, ending_exit, game_over]
+          deltas: { P: 2 }
+          leads_to: "⑤ добровольный выезд — не обязательно поражение"
+
+    # ⑤ ending_legal coached (прокатило, но с занозой)
+    - id: anhoerung_legal_coached
+      match: { verbs: [talk, deceive, persuade] }
+      requires:
+        - { flag: coached_story }
+        - { flag: story_consistent }
+      skill_check: { skill: hladnokrovie, vs: 50 }
+      outcomes:
+        - on: success
+          text: "Ты ведёшь «сильную» версию, но держишь нить — последовательность не рвётся. Офицер задаёт вопросы, ты выдерживаешь. «Gut.» Статус одобрен. Валид ухмыляется: «Видишь? Театр. Только ты теперь сам не знаешь, где в твоей истории ты.»"
+          effects:
+            set_flags: [anhoerung_done, ending_legal, game_over]
+            inc: { gl: 2 }
+          deltas: { T: -2 }
+          leads_to: "① убежище — с занозой внутри"
+        - on: fail
+          text: "Версии начинают расходиться. Офицер тихо просит уточнить. Переводчик переводит. Дело передаётся на пересмотр."
+          effects:
+            set_flags: [anhoerung_done, ending_gray, game_over]
+            inc: { gl: -2 }
+          deltas: { T: -2 }
+          leads_to: "② Duldung — отказ, но депортацию приостановили"
+
+    # ⑥ ending_gray — Duldung (по умолчанию, если ничего выше не сработало)
+    - id: anhoerung_gray_default
+      match: { verbs: [talk, observe, apply, inquire_status, submit_docs, rest, refuse, give] }
+      outcomes:
+        - on: always
+          text: "Решение: отказ, но депортацию приостановили. Duldung. Подвешенность без статуса — не конец, но и не ответ. НАДЯ: «Это не конец. Это пауза. Есть Ausbildungsduldung, есть апелляция. Боремся дальше.»"
+          effects:
+            set_flags: [anhoerung_done, ending_gray, game_over]
+          deltas: { }
+          leads_to: "② Duldung → Ausbildungsduldung или апелляция"
+  fallback: { text: "Офицер смотрит ровно. Переводчик ждёт. Диктофон пишет.", reopen: true }

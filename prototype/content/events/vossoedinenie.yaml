@@ -1,0 +1,896 @@
+# Линия «ВОССОЕДИНЕНИЕ» — Familiennachzug, турецкая община, Берлин.
+# Акты 1–3. Узлы N1–N9. 18+ событий.
+# Герой: турчанка/турок ~24 лет, приехал(а) к семье/супругу.
+# Старт: altbau_flat, флаг with_family, 60 €, таймер 70 дней «до продления».
+# Центральная дилемма: автономия (PRIDE) vs семья/община (ALTRU→жертва собой).
+# Гард-рейлы тона: семья — живые люди; без карикатур; на мрак — человечность; достоинство > жалость.
+
+events:
+
+# ============================================================
+# АКТ I (дни 1–20): прибытие, первый контакт с системой, первые трещины
+# ============================================================
+
+# ---------- ДЕНЬ 1: прибытие ----------
+- id: vossoedinenie_arrival
+  title: "Первый вечер"
+  category: arc
+  act: 1
+  priority: 100
+  once: true
+  trigger: scheduled
+  day: 1
+  entry: { all: [ {flag_not: voss_arrived} ] }
+  stakes: trivial
+  location: altbau_flat
+  targets: [npc_yildiz_anne]
+  facts:
+    - "Ты в квартире семьи в Нойкёльне. Альтбау, третий этаж, запах специй из кухни."
+    - "Свекровь Йылдыз-ханым накрыла стол. Ужин — по-турецки, шумно, все смотрят на тебя."
+    - "При тебе 60 €, телефон, один чемодан. Комната — твоя, но дверь без замка."
+    - "Виза: 70 дней до продления ВНЖ. Условие продления — пройти интеграционный курс."
+  intro: "ЙЫЛДЫЗ-ХАНЫМ: «Gel, otur, ye. (Иди, садись, ешь.) Ты наконец здесь. Мы тебя ждали.» Тепло — и что-то ещё, что трудно назвать."
+  branches:
+    - id: join_warmly
+      match: { verbs: [talk, befriend, offer_help], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты садишься, ешь, слушаешь. Йылдыз-ханым подкладывает тебе ещё. Тепло, шумно — и чуть тесно. Вечер проходит гладко."
+          effects: { set_flags: [voss_arrived], faction: { turkish: 5 } }
+          deltas: { A: 2, P: -1 }
+          leads_to: "хороший старт в семье; Йылдыз-ханым отметила открытость"
+    - id: polite_distance
+      match: { verbs: [observe, rest], tone: [polite, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты улыбаешься, но держишься чуть в стороне. Устала с дороги. Йылдыз-ханым понимает — и не совсем."
+          effects: { set_flags: [voss_arrived] }
+          leads_to: "нейтральный старт; семья наблюдает"
+    - id: ask_about_rules
+      match: { verbs: [inquire_status, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты осторожно спрашиваешь, как тут всё устроено. Йылдыз-ханым делает паузу: «Kızım, у нас всё просто. Вместе — значит вместе.» Конкретики нет."
+          effects: { set_flags: [voss_arrived] }
+          deltas: { P: 1 }
+          leads_to: "правила не названы — это и есть правила"
+  fallback: { text: "Стол накрыт. Йылдыз-ханым ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 2: N1 — интеграционный курс ----------
+- id: vossoedinenie_n1_kurs
+  title: "Первый день курса"
+  category: dilemma
+  act: 1
+  node: N1
+  priority: 90
+  once: true
+  trigger: scheduled
+  day: 2
+  entry: { all: [ {flag: voss_arrived}, {flag_not: voss_kurs_started} ] }
+  stakes: medium
+  location: buergeramt
+  targets: [npc_frau_herzog]
+  facts:
+    - "Интеграционный курс — обязательное условие ВНЖ по Familiennachzug. 700 часов немецкого + ориентационный курс."
+    - "Здесь — первый урок. Фрау Херцог раздаёт учебники. В группе: сириец, украинка, ещё одна турчанка."
+    - "Семья хотела, чтобы Зейнеп тебя проводила. Но ты пришла одна."
+  intro: "ФРАУ ХЕРЦОГ: «Willkommen. Schritt für Schritt. (Добро пожаловать. Шаг за шагом.) Меня зовут фрау Херцог. Давайте познакомимся.»"
+  branches:
+    - id: engage_actively
+      match: { verbs: [talk, ask_help, apply], honesty: [truthful] }
+      skill_check: { skill: deutsch, vs: 20 }
+      outcomes:
+        - on: success
+          text: "Ты отвечаешь на немецком — неловко, но искренне. Херцог кивает с теплом. После урока она задерживается: «Nicht schlecht. (Неплохо.) Есть вопросы — спрашивайте.»"
+          effects: { set_flags: [voss_kurs_started, knows_frau_herzog], faction: { volunteers: 3 } }
+          deltas: { P: 1, T: 1 }
+          skill_xp: { deutsch: 5 }
+          leads_to: "Херцог замечает тебя; курс как точка опоры вне семьи"
+        - on: fail
+          text: "Слова путаются. Ты краснеешь. Херцог мягко переходит дальше. После урока украинка говорит: «У всех так в начале.»"
+          effects: { set_flags: [voss_kurs_started, knows_frau_herzog] }
+          deltas: { P: -1 }
+          skill_xp: { deutsch: 2 }
+          leads_to: "курс начат; стресс виден"
+    - id: silent_observe
+      match: { verbs: [observe, rest, hide] }
+      outcomes:
+        - on: always
+          text: "Ты молчишь, слушаешь. Херцог не давит. К концу урока ты уже понимаешь чуть больше, чем в начале."
+          effects: { set_flags: [voss_kurs_started, knows_frau_herzog] }
+          skill_xp: { deutsch: 2 }
+          leads_to: "курс начат; тихий старт"
+    - id: ask_about_rights
+      match: { verbs: [inquire_status, ask_help] }
+      outcomes:
+        - on: always
+          text: "В перерыве ты спрашиваешь Херцог про ВНЖ и права. Она говорит аккуратно: «Курс — ваш. Не чей-то ещё. Закон на вашей стороне.» Что-то в этом задерживается."
+          effects: { set_flags: [voss_kurs_started, knows_frau_herzog, knows_own_rights_hint] }
+          deltas: { P: 1, T: 1 }
+          skill_xp: { deutsch: 2 }
+          leads_to: "семя осознанности; пригодится на N3"
+  fallback: { text: "Фрау Херцог ждёт ответа. В группе тишина.", reopen: true }
+
+# ---------- ДЕНЬ 4: Зейнеп — первое знакомство ----------
+- id: vossoedinenie_meet_zeynep
+  title: "Золовка"
+  category: arc
+  act: 1
+  priority: 80
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_kurs_started}, {flag_not: voss_met_zeynep} ] }
+  stakes: low
+  location: altbau_flat
+  targets: [npc_zeynep]
+  facts:
+    - "Зейнеп — сестра мужа (или родственница в семье), 27 лет, работает в магазине тканей."
+    - "Она единственная в семье, кто жил вне общины — год в Гамбурге."
+    - "Йылдыз-ханым её немного побаивается, но любит."
+  intro: "ЗЕЙНЕП: «Ну что, как первый день? Дали тебе отдельный ключ от квартиры?» Вопрос звучит невинно — и не очень."
+  branches:
+    - id: honest_with_zeynep
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь честно — что странно, тесно, непонятно. Зейнеп усмехается: «Хорошо, что хоть кому-то сказала. Мне тоже было так.» Это начало."
+          effects: { set_flags: [voss_met_zeynep, zeynep_trusted], faction: { turkish: 2 } }
+          deltas: { T: 2, P: 1 }
+          leads_to: "Зейнеп — союзник автономии; открывает пути вне общины"
+    - id: cautious_with_zeynep
+      match: { verbs: [talk], honesty: [half_truth, omission] }
+      outcomes:
+        - on: always
+          text: "Ты отвечаешь осторожно — «всё хорошо». Зейнеп смотрит с лёгкой улыбкой: «Ладно. Я здесь.»"
+          effects: { set_flags: [voss_met_zeynep] }
+          leads_to: "Зейнеп не закрыта, но дистанция пока есть"
+    - id: ask_zeynep_about_freedom
+      match: { verbs: [ask_help, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Ты спрашиваешь, как она живёт — работает, сама. Зейнеп говорит коротко: «Hadi ya, это долгая история. Но можно. Если сам(а) хочешь.»"
+          effects: { set_flags: [voss_met_zeynep, zeynep_trusted] }
+          deltas: { P: 2 }
+          leads_to: "Зейнеп открывает тему автономии — семя N4"
+  fallback: { text: "Зейнеп ждёт. Ключа тебе не дали.", reopen: true }
+
+# ---------- ДЕНЬ 6: первое давление семьи ----------
+- id: vossoedinenie_family_pressure_1
+  title: "Вопрос на кухне"
+  category: pressure
+  act: 1
+  priority: 75
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_kurs_started}, {flag_not: voss_family_question_1} ] }
+  stakes: medium
+  location: altbau_flat
+  targets: [npc_yildiz_anne, npc_suleyman]
+  facts:
+    - "Йылдыз-ханым спрашивает, не слишком ли много времени ты проводишь на курсе. «Нельзя ли делать это дома?»"
+    - "Сулейман (муж/принимающий) молчит, но смотрит."
+    - "Курс — условие ВНЖ. Это не обсуждается. Но тон разговора важнее содержания."
+  intro: "ЙЫЛДЫЗ-ХАНЫМ: «Kızım, а зачем каждый день? Нельзя пропустить разок? Дом тоже не сам себя убирает.»"
+  branches:
+    - id: explain_calmly
+      match: { verbs: [persuade, talk], honesty: [truthful], tone: [polite] }
+      skill_check: { skill: deutsch, vs: 15 }
+      outcomes:
+        - on: success
+          text: "Ты объясняешь: курс — закон, не выбор. «Без него продление не дадут.» Йылдыз-ханым кивает неохотно. Сулейман: «Ладно, мать.»"
+          effects: { set_flags: [voss_family_question_1, family_knows_kurs_is_required] }
+          deltas: { T: 1, P: 1 }
+          leads_to: "семья поняла, но напряжение осталось"
+        - on: fail
+          text: "Слов не хватает. Йылдыз-ханым принимает молчание как согласие. «Отлично, завтра поможешь тёте Гюльсен переехать.»"
+          effects: { set_flags: [voss_family_question_1], stress: 8 }
+          deltas: { P: -1 }
+          leads_to: "граница не удержана; семья начинает заполнять время"
+    - id: submit_silently
+      match: { verbs: [apologize, rest], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься пропустить один день. Йылдыз-ханым довольна. Но внутри что-то сжимается."
+          effects: { set_flags: [voss_family_question_1], stress: 10 }
+          deltas: { A: 2, P: -3 }
+          leads_to: "ALTRU растёт, PRIDE падает; паттерн подчинения устанавливается"
+    - id: refuse_firmly
+      match: { verbs: [refuse], tone: [neutral, polite] }
+      outcomes:
+        - on: always
+          text: "«Нет, я должна идти. Это обязательно.» Йылдыз-ханым замолкает. Сулейман смотрит в телефон. Первая настоящая граница."
+          effects: { set_flags: [voss_family_question_1, family_tension_1] }
+          deltas: { P: 3, A: -2 }
+          faction: { turkish: -2 }
+          leads_to: "репутация в семье чуть снизилась; PRIDE выросла"
+  fallback: { text: "Йылдыз-ханым ждёт ответа, вытирая руки о фартук.", reopen: true }
+
+# ---------- ДЕНЬ 8: прогулка с Зейнеп — первый шаг наружу ----------
+- id: vossoedinenie_zeynep_walk
+  title: "Прогулка"
+  category: community
+  act: 1
+  priority: 65
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_met_zeynep}, {flag_not: voss_outside_walk} ] }
+  stakes: low
+  location: sonnenallee_market
+  targets: [npc_zeynep]
+  facts:
+    - "Зейнеп зовёт пройтись по Зонненаллее — рынок, кофе, воздух."
+    - "Йылдыз-ханым молча смотрит как вы уходите."
+    - "На улице — тесно и живо: турецкие лавки, арабские пекарни, немецкие кафе рядом."
+  intro: "ЗЕЙНЕП: «Пойдём. Город — это не только квартира. Ich zeig dir was. (Покажу тебе кое-что.)»"
+  branches:
+    - id: go_open
+      match: { verbs: [talk, befriend, observe] }
+      outcomes:
+        - on: always
+          text: "Вы идёте. Зейнеп показывает, объясняет, смеётся. «Я провела здесь год в панике, потом поняла — это просто улица.» Ты дышишь чуть свободнее."
+          effects: { set_flags: [voss_outside_walk, zeynep_bond_1], stress: -10 }
+          deltas: { P: 2, A: -1 }
+          leads_to: "связь с Зейнеп крепнет; мир вне квартиры становится реальным"
+    - id: ask_about_work
+      match: { verbs: [ask_help, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Ты спрашиваешь Зейнеп: как она нашла работу? Та рассказывает коротко — долго, через Херцог, через бюро. «Семья не обрадовалась. Но привыкли.»"
+          effects: { set_flags: [voss_outside_walk, zeynep_bond_1, zeynep_told_work_path] }
+          deltas: { P: 3 }
+          skill_xp: { deutsch: 2 }
+          leads_to: "информация о пути к работе; семя N2"
+    - id: stay_cautious
+      match: { verbs: [refuse, observe], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь, но держишься. Зейнеп не давит. «Всё нормально. Не надо сразу всё.»"
+          effects: { set_flags: [voss_outside_walk] }
+          leads_to: "нейтрально; Зейнеп по-прежнему рядом"
+  fallback: { text: "Зейнеп ждёт у двери.", reopen: true }
+
+# ============================================================
+# N2 — первый шаг к автономии (работа/учёба вне дома)
+# ============================================================
+
+- id: vossoedinenie_n2_autonomy_step
+  title: "Свои деньги"
+  category: dilemma
+  act: 1
+  node: N2
+  priority: 78
+  once: true
+  trigger: scheduled
+  day: 12
+  entry: { all: [ {flag: voss_kurs_started}, {flag_not: voss_n2_done} ] }
+  stakes: high
+  location: mehmet_kebab
+  targets: [npc_mehmet, npc_hakan]
+  facts:
+    - "Мехмет ищет помощника несколько часов в неделю — лёгкая работа, деньги небольшие, но свои."
+    - "Хакан из общины сказал семье, что видел тебя у Мехмета. Информация пойдёт к Йылдыз-ханым."
+    - "По Familiennachzug работать можно — но семья об этом не знает (или делает вид)."
+    - "Своих денег нет. 60 € кончатся скоро."
+  intro: "МЕХМЕТ: «Evladım, мне нужен человек пару часов. Честно, кэшем. Вопросов лишних не задаю.»"
+  branches:
+    - id: take_work_secretly
+      match: { verbs: [work, trade], honesty: [omission, half_truth] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься — и не говоришь семье. Деньги есть. Тайна тоже. Мехмет: «Yavaş yavaş, abi. Никуда не спешим.»"
+          effects: { money: 40, set_flags: [voss_n2_done, voss_has_income, voss_work_secret], inc: { voss_secret_days: 1 } }
+          deltas: { P: 3, T: -2, L: -1 }
+          leads_to: "деньги есть, тайна растёт; семья узнает на N6"
+    - id: take_work_openly
+      match: { verbs: [work, talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты сначала говоришь дома. Йылдыз-ханым напрягается, но Зейнеп — неожиданно — встаёт на твою сторону: «По закону она может.» Короткий конфликт. Ты идёшь работать."
+          effects: { money: 40, set_flags: [voss_n2_done, voss_has_income, voss_work_open, family_tension_1] }
+          deltas: { P: 5, T: 2, A: -3 }
+          faction: { turkish: -3 }
+          leads_to: "открытый конфликт, но чистая позиция; Зейнеп показала себя союзником"
+    - id: refuse_work
+      match: { verbs: [refuse, rest], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "Ты отказываешься — не хочется лишнего напряжения. Мехмет понимает. Деньги кончатся. Зависимость от семьи — нет."
+          effects: { set_flags: [voss_n2_done] }
+          deltas: { A: 3, P: -4 }
+          leads_to: "ALTRU растёт; зависимость от семьи усиливается"
+    - id: ask_about_rights_work
+      match: { verbs: [inquire_status, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь к Херцог на следующий день и спрашиваешь про права. «По вашей визе — да, можно работать. Это закон.» Ты записываешь. Теперь знаешь."
+          effects: { set_flags: [voss_n2_done, knows_work_rights] }
+          deltas: { P: 2, T: 1 }
+          skill_xp: { deutsch: 3 }
+          leads_to: "знание своих прав — актив на N3"
+  fallback: { text: "Мехмет ждёт ответа. Деньги в кошельке не прибавляются.", reopen: true }
+
+# ============================================================
+# АКТ II (дни 20–50): N3, N4, N5, N8 — конфликты и союзники
+# ============================================================
+
+# N3 — конфликт с контролирующим членом семьи
+- id: vossoedinenie_n3_conflict
+  title: "Разговор мужского рода"
+  category: dilemma
+  act: 2
+  node: N3
+  priority: 85
+  once: true
+  trigger: scheduled
+  day: 22
+  entry: { all: [ {flag: voss_n2_done}, {flag_not: voss_n3_done} ] }
+  stakes: high
+  location: altbau_flat
+  targets: [npc_suleyman, npc_yildiz_anne]
+  facts:
+    - "Сулейман узнал о работе или о времени вне дома — через Хакана или сам заметил."
+    - "Разговор происходит вечером. Йылдыз-ханым на кухне — слышит, не входит."
+    - "ВНЖ привязан к семье. Разрыв = потеря статуса + жилья. Но молчать — тоже цена."
+  intro: "СУЛЕЙМАН: «Мы должны поговорить. Люди говорят. Это на нас падает, понимаешь?»"
+  branches:
+    - id: stand_ground
+      match: { verbs: [refuse, persuade], tone: [polite, neutral], honesty: [truthful] }
+      skill_check: { skill: deutsch, vs: 25 }
+      outcomes:
+        - on: success
+          text: "«Я никого не подвела. Я хожу на курс. Я работаю по закону. Это хорошо для семьи, не плохо.» Сулейман молчит. Потом: «Ладно. Но тише.» Неловкий мир."
+          effects: { set_flags: [voss_n3_done, suleyman_knows, family_uneasy_truce] }
+          deltas: { P: 5, T: 2, A: -3 }
+          skill_xp: { deutsch: 4 }
+          leads_to: "автономия отстояна — дорогой ценой репутации внутри семьи"
+        - on: fail
+          text: "Слова путаются. Сулейман слышит не то. «Вот именно.» Разговор кончается без ответа. Ты уходишь в комнату."
+          effects: { set_flags: [voss_n3_done, suleyman_disappointed], stress: 15 }
+          deltas: { P: -2, T: -1 }
+          leads_to: "конфликт не закрыт; тлеет"
+    - id: apologize_keep_peace
+      match: { verbs: [apologize, rest], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "Ты извиняешься. Не за что именно — просто чтобы закончить. Йылдыз-ханым входит с чаем. «Вот и ладно.» Мир восстановлен. И что-то потеряно."
+          effects: { set_flags: [voss_n3_done, suleyman_satisfied] }
+          deltas: { A: 4, P: -5 }
+          faction: { turkish: 3 }
+          leads_to: "ALTRU высоко; PRIDE низко; паттерн капитуляции"
+    - id: call_zeynep
+      match: { verbs: [ask_help, talk] }
+      requires: [ {flag: zeynep_trusted} ]
+      outcomes:
+        - on: always
+          text: "Ты не отвечаешь Сулейману — уходишь к Зейнеп. Та слышит и выходит сама: «Абла (сестра), она делает всё правильно.» Краткий семейный шторм. Потом тишина."
+          effects: { set_flags: [voss_n3_done, zeynep_intervened, family_tension_2] }
+          deltas: { P: 3, A: 1 }
+          faction: { turkish: -2 }
+          leads_to: "Зейнеп открыто выступила — это её тоже стоит чего-то"
+  fallback: { text: "Сулейман ждёт. Йылдыз-ханым гремит посудой на кухне.", reopen: true }
+
+# N4 — Зейнеп vs покорность роли
+- id: vossoedinenie_n4_zeynep_vs_role
+  title: "Выбор берегов"
+  category: dilemma
+  act: 2
+  node: N4
+  priority: 80
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_n3_done}, {flag_not: voss_n4_done} ] }
+  stakes: high
+  location: hasenheide_park
+  targets: [npc_zeynep]
+  facts:
+    - "Зейнеп встречает тебя после курса. Она говорит прямо: есть вакансия помощника в офисе — через её знакомых."
+    - "Легально, нормальные деньги, немецкий нужен (Deutsch 20+ хватит для старта)."
+    - "Проблема: рабочий день частично пересекается с ожиданиями семьи. И это не секрет — придётся говорить."
+  intro: "ЗЕЙНЕП: «Я нашла тебе что-то. Hadi ya — послушай сначала, потом решай.»"
+  branches:
+    - id: go_for_it
+      match: { verbs: [apply, ask_help, work] }
+      requires: [ {skill_gte: {deutsch: 20}} ]
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься. Зейнеп обнимает: «Ich hab das auch durchgemacht. Ты не одна.» Собеседование через три дня. Семья не знает — пока."
+          effects: { set_flags: [voss_n4_done, voss_job_chance, zeynep_bond_2] }
+          deltas: { P: 5, A: -2 }
+          leads_to: "работа вне общины — путь к ending_legal или ending_exit"
+    - id: go_for_it_low_deutsch
+      match: { verbs: [apply, ask_help] }
+      requires: [ {skill_gte: {deutsch: 15}} ]
+      outcomes:
+        - on: always
+          text: "Немецкий пока слабоват, но Зейнеп обещает подготовить. «Hauptsache du willst. (Главное — ты хочешь.)» Риск, но шанс."
+          effects: { set_flags: [voss_n4_done, voss_job_chance_risky, zeynep_bond_2] }
+          deltas: { P: 4 }
+          skill_xp: { deutsch: 3 }
+          leads_to: "шанс есть, но нужен прогресс на курсе"
+    - id: choose_family_role
+      match: { verbs: [refuse, rest], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "«Не сейчас, Зейнеп. Нельзя.» Зейнеп смотрит долго: «Ладно. Но это была ты — не я.» Она не осуждает. Просто называет."
+          effects: { set_flags: [voss_n4_done, voss_chose_role] }
+          deltas: { A: 5, P: -6 }
+          leads_to: "ALTRU высокий; путь к ending_gray"
+    - id: ask_about_status_risk
+      match: { verbs: [inquire_status, observe] }
+      outcomes:
+        - on: always
+          text: "Ты спрашиваешь про ВНЖ и риск. Зейнеп говорит честно: «Статус твой, пока курс идёт. Работа — твоё право. Семья — отдельно.» Раньше ты этого не думала вслух."
+          effects: { set_flags: [voss_n4_done, voss_knows_status_independent] }
+          deltas: { P: 3, T: 2 }
+          leads_to: "знание как защита; Зейнеп как источник правды"
+  fallback: { text: "Зейнеп ждёт, держа листок с именем и номером.", reopen: true }
+
+# N5 — отношения (зеркало состояния)
+- id: vossoedinenie_n5_relationship
+  title: "Вечер в четверг"
+  category: dilemma
+  act: 2
+  node: N5
+  priority: 72
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_n4_done}, {flag_not: voss_n5_done} ] }
+  stakes: medium
+  location: altbau_flat
+  targets: [npc_suleyman]
+  facts:
+    - "Вечер. Вы с Сулейманом первый раз наедине по-настоящему — без Йылдыз-ханым."
+    - "Он не монстр. Он человек, которому тоже говорили, как жить."
+    - "Разговор зависит от того, что было до: если конфликт — ледяной; если капитуляция — мягкий."
+  intro: "СУЛЕЙМАН: «Ты не спишь.» Пауза. «Я тоже.»"
+  branches:
+    - id: honest_talk
+      match: { verbs: [talk], honesty: [truthful], tone: [neutral, polite] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь, что устала. Не от него — от того, как это всё устроено. Он молчит долго. Потом: «Я думал, ты рада здесь быть.» «Я рада. И устала.» Впервые — честно."
+          effects: { set_flags: [voss_n5_done, suleyman_honest_moment] }
+          deltas: { T: 3, A: 1 }
+          leads_to: "Сулейман увидел тебя; не гарантия изменений, но щель"
+    - id: avoid_talk
+      match: { verbs: [rest, refuse, observe], tone: [neutral] }
+      outcomes:
+        - on: always
+          text: "Ты не говоришь. Тишина длится. Он уходит спать первым. Завтра снова всё по-прежнему."
+          effects: { set_flags: [voss_n5_done] }
+          deltas: { T: -1 }
+          leads_to: "момент упущен; статус-кво сохраняется"
+    - id: ask_for_ally
+      match: { verbs: [ask_help, persuade], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Помоги мне. Не запрещай — помоги.» Сулейман смотрит в окно. «Я не знаю, как.» Честно. Это тоже что-то."
+          effects: { set_flags: [voss_n5_done, suleyman_tried_ally] }
+          deltas: { T: 2, P: 2 }
+          leads_to: "Сулейман не враг, но слабый союзник; пригодится на N9"
+    - id: flirt_reconnect
+      match: { verbs: [flirt, befriend], tone: [charming] }
+      outcomes:
+        - on: always
+          text: "Ты выбираешь не слова, а тепло. Это тоже язык. Напряжение спадает. Что-то держится — не решение, но живое."
+          effects: { set_flags: [voss_n5_done, suleyman_softer] }
+          deltas: { A: 2, T: 1 }
+          leads_to: "отношения живее; переговорная позиция чуть лучше"
+  fallback: { text: "Темнота. Он рядом и далеко одновременно.", reopen: true }
+
+# N8 — зеркало-новичок (другая девушка на курсе)
+- id: vossoedinenie_n8_mirror
+  title: "Рея"
+  category: community
+  act: 2
+  node: N8
+  priority: 60
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_kurs_started}, {day_gte: 30}, {flag_not: voss_n8_done} ] }
+  stakes: low
+  location: buergeramt
+  targets: [npc_frau_herzog]
+  facts:
+    - "На курсе появляется новенькая — Рея, турчанка 20 лет, только приехала. Испуганная."
+    - "Она в точно той же ситуации, в которой ты была три недели назад."
+    - "Ты уже знаешь больше."
+  intro: "Рея садится рядом и спрашивает полушёпотом: «Ты здесь давно? Как... как тут вообще?»"
+  branches:
+    - id: help_rea
+      match: { verbs: [offer_help, talk, befriend] }
+      outcomes:
+        - on: always
+          text: "Ты объясняешь — курс, права, Херцог. «Ты можешь больше, чем тебе говорят.» Рея слушает широко открытыми глазами. Херцог смотрит на тебя иначе — с уважением."
+          effects: { set_flags: [voss_n8_done, helped_rea], faction: { volunteers: 4 } }
+          deltas: { A: 3, P: 2 }
+          skill_xp: { deutsch: 3 }
+          leads_to: "роль «знающей» укрепляет позицию; Херцог теперь союзник на N9"
+    - id: observe_only
+      match: { verbs: [observe, rest] }
+      outcomes:
+        - on: always
+          text: "Ты смотришь. Помнишь себя. Не говоришь — рано, наверное. Или нет?"
+          effects: { set_flags: [voss_n8_done] }
+          deltas: { P: -1 }
+          leads_to: "момент прошёл; Херцог всё видит"
+    - id: tell_rea_hard_truth
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь честно: «Сложно. Но у тебя больше прав, чем тебе кажется. Запомни это.» Рея молчит, потом кивает. Что-то передаётся."
+          effects: { set_flags: [voss_n8_done, helped_rea], faction: { volunteers: 3 } }
+          deltas: { A: 2, P: 3, T: 1 }
+          leads_to: "ты видишь свой путь со стороны; что-то устаканивается"
+  fallback: { text: "Рея смотрит с ожиданием. Херцог ведёт урок.", reopen: true }
+
+# Ambient: смена у Мехмета (pool)
+- id: vossoedinenie_mehmet_shift
+  title: "Смена"
+  category: arc
+  act: 2
+  priority: 40
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 2
+  entry: { all: [ {flag: voss_has_income} ] }
+  stakes: low
+  location: mehmet_kebab
+  targets: [npc_mehmet]
+  facts:
+    - "Мехмет режет мясо. Запах лаваша. Тихий час."
+  intro: "МЕХМЕТ: «Evladım, пришла. Хорошо. Начнём.»"
+  branches:
+    - id: work_quietly
+      match: { verbs: [work, offer_help] }
+      outcomes:
+        - on: always
+          text: "Ты работаешь. Мехмет иногда говорит что-то короткое — про дочку, про цены, про погоду. Ничего лишнего. Перед уходом кладёт деньги на стол, не считая."
+          effects: { money: 35, fatigue: 10, hunger: -20, faction: { turkish: 2 }, inc: { voss_shifts: 1 } }
+          deltas: { P: 1 }
+          leads_to: "постепенный доход; связь с Мехметом крепнет"
+    - id: talk_to_mehmet
+      match: { verbs: [talk, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты спрашиваешь совета. Мехмет долго молчит, потом: «Семья — это семья. Но ты — это ты. Yavaş yavaş найдётся место для обоих.»"
+          effects: { money: 35, fatigue: 10, faction: { turkish: 3 }, inc: { voss_shifts: 1 }, stress: -8 }
+          deltas: { A: 1, P: 1 }
+          leads_to: "Мехмет как мудрый нейтральный голос"
+  fallback: { text: "Посуда не ждёт.", reopen: true }
+
+# Ambient: курс (pool)
+- id: vossoedinenie_kurs_day
+  title: "День на курсе"
+  category: arc
+  act: 2
+  priority: 35
+  trigger: pool
+  weight: 1.8
+  cooldown_days: 1
+  entry: { all: [ {flag: voss_kurs_started} ] }
+  stakes: trivial
+  location: buergeramt
+  targets: [npc_frau_herzog]
+  facts:
+    - "Сегодня — грамматика, потом короткий разговор про Берлин."
+  intro: "Фрау Херцог пишет на доске: «Was ist Heimat?» (Что такое дом?)"
+  branches:
+    - id: participate
+      match: { verbs: [talk, apply, work] }
+      skill_check: { skill: deutsch, vs: 20 }
+      outcomes:
+        - on: success
+          text: "Ты отвечаешь. Слова выходят лучше, чем неделю назад. Херцог улыбается."
+          effects: { stress: -5 }
+          deltas: { P: 1 }
+          skill_xp: { deutsch: 4 }
+          leads_to: "немецкий растёт"
+        - on: fail
+          text: "Слова выходят неловко. Но ты сказала. Этого уже достаточно."
+          skill_xp: { deutsch: 2 }
+          leads_to: "прогресс медленный, но есть"
+    - id: listen_only
+      match: { verbs: [observe, rest] }
+      outcomes:
+        - on: always
+          text: "Ты слушаешь. Понимаешь больше, чем говоришь. Тоже форма работы."
+          skill_xp: { deutsch: 2 }
+  fallback: { text: "Класс ждёт.", reopen: true }
+
+# Давление денег
+- id: vossoedinenie_money_pressure
+  title: "Пересчёт"
+  category: pressure
+  act: 2
+  priority: 50
+  trigger: pool
+  weight: 1.2
+  cooldown_days: 5
+  entry: { all: [ {money_lt: 40} ] }
+  stakes: medium
+  location: altbau_flat
+  targets: []
+  facts:
+    - "Деньги почти кончились. Жильё и еда есть — это семья. Но транспорт, мелочи, курс — это не она."
+    - "Зависимость от семьи означает, что каждый ужин — не просто ужин."
+  intro: "Ты считаешь монеты. Проездной на неделю — 17 €. Осталось меньше."
+  branches:
+    - id: ask_family
+      match: { verbs: [ask_help, beg], tone: [submissive, polite] }
+      outcomes:
+        - on: always
+          text: "Ты просишь Йылдыз-ханым. Та даёт — молча, без вопросов. Но что-то в этом молчании говорит громче слов."
+          effects: { money: 30 }
+          deltas: { A: 3, P: -3 }
+          faction: { turkish: 1 }
+          leads_to: "зависимость оформилась как обязательство"
+    - id: use_own_income
+      match: { verbs: [trade, work] }
+      requires: [ {flag: voss_has_income} ]
+      outcomes:
+        - on: always
+          text: "У тебя есть свои деньги — небольшие, но свои. Это не просто проездной. Это разница."
+          effects: { money: -17 }
+          deltas: { P: 2 }
+          leads_to: "автономия ощущается физически"
+    - id: go_without
+      match: { verbs: [rest, move] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь пешком. Далеко, но бесплатно. Город смотришь иначе, когда торопиться некуда."
+          effects: { fatigue: 8 }
+          deltas: { P: 1 }
+          leads_to: "небольшая победа упрямства"
+  fallback: { text: "Проездного нет. Курс не ждёт.", reopen: true }
+
+# ============================================================
+# N6 — семья «узнаёт»
+# ============================================================
+
+- id: vossoedinenie_n6_family_finds_out
+  title: "Хакан проговорился"
+  category: pressure
+  act: 2
+  node: N6
+  priority: 88
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_n4_done}, {day_gte: 35}, {flag_not: voss_n6_done} ] }
+  stakes: high
+  location: altbau_flat
+  targets: [npc_yildiz_anne, npc_suleyman]
+  facts:
+    - "Хакан видел тебя в другом районе — без объяснений — и рассказал. Или семья сама заметила несовпадения."
+    - "Вечер. Вся семья дома."
+    - "Степень кризиса зависит от того, что было: тайная работа, открытый конфликт или капитуляция."
+  intro: "ЙЫЛДЫЗ-ХАНЫМ: «Sana bir şey sormam lazım. (Мне нужно тебя кое-что спросить.) Где ты была в пятницу?»"
+  branches:
+    - id: tell_truth_now
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Я работала. Это законно. Я хотела сказать, но не знала как.» Тишина. Потом Зейнеп негромко: «Так и есть. Всё правильно.» Йылдыз-ханым смотрит долго. «Почему не сказала сразу.» Не вопрос — упрёк. Но не приговор."
+          effects: { set_flags: [voss_n6_done, family_knows_truth] }
+          deltas: { T: 5, P: 3, A: -4 }
+          faction: { turkish: -4 }
+          leads_to: "честность зафиксирована; доверие подорвано, но можно восстановить"
+    - id: lie_cover
+      match: { verbs: [deceive, talk], honesty: [lie, omission] }
+      skill_check: { skill: deutsch, vs: 30 }
+      outcomes:
+        - on: success
+          text: "Ты называешь другой адрес, другую причину. Верят — пока. Но тайна становится тяжелее."
+          effects: { set_flags: [voss_n6_done, family_deceived] }
+          deltas: { T: -5, P: 1 }
+          leads_to: "ложь держится; мина на N9"
+        - on: fail
+          text: "Йылдыз-ханым смотрит на тебя. «Ты говоришь неправду.» Это не вопрос. Ситуация хуже, чем если бы сказала правду."
+          effects: { set_flags: [voss_n6_done, family_caught_lying], stress: 20 }
+          deltas: { T: -8, A: -3 }
+          faction: { turkish: -6 }
+          leads_to: "доверие разрушено серьёзно"
+    - id: zeynep_speaks
+      match: { verbs: [ask_help, observe] }
+      requires: [ {flag: zeynep_intervened} ]
+      outcomes:
+        - on: always
+          text: "Зейнеп уже готова. Она говорит за тебя — спокойно, без обвинений: «Она ничего не нарушила. Вы просто не спрашивали.» Йылдыз-ханым молчит очень долго."
+          effects: { set_flags: [voss_n6_done, zeynep_spoke_up, family_confronted] }
+          deltas: { P: 2, T: 2 }
+          faction: { turkish: -3 }
+          leads_to: "Зейнеп стала открытым союзником; семья перегруппируется"
+    - id: appeal_to_suleyman
+      match: { verbs: [persuade, talk] }
+      requires: [ {flag: suleyman_tried_ally} ]
+      outcomes:
+        - on: always
+          text: "Ты смотришь на Сулеймана. Он помнит тот вечер. Медленно: «Мать, она делала это по-честному.» Кратко. Не защита — но позиция."
+          effects: { set_flags: [voss_n6_done, suleyman_defended] }
+          deltas: { T: 3, P: 2 }
+          leads_to: "Сулейман сделал шаг; хрупкий альянс"
+  fallback: { text: "Йылдыз-ханым ждёт. Сулейман за ней.", reopen: true }
+
+# ============================================================
+# АКТ III (дни 50–70): схождение нитей, развязка, N9
+# ============================================================
+
+# Поддержка Херцог — как актив на финале
+- id: vossoedinenie_herzog_support
+  title: "Справка"
+  category: arc
+  act: 3
+  priority: 70
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_n6_done}, {day_gte: 50}, {flag_not: voss_herzog_support} ] }
+  stakes: medium
+  location: buergeramt
+  targets: [npc_frau_herzog]
+  facts:
+    - "Херцог даёт официальную справку о посещаемости и прогрессе курса. Это важный документ для продления."
+    - "Если ты помогала Рее — Херцог добавляет записку от себя."
+  intro: "ФРАУ ХЕРЦОГ: «Их habe alles vorbereitet. (Я всё подготовила.) Вы не одна в этом процессе.»"
+  branches:
+    - id: accept_support
+      match: { verbs: [ask_help, apply, submit_docs, talk] }
+      outcomes:
+        - on: always
+          text: "Ты берёшь документы. Херцог говорит тихо: «Sie haben mehr getan als nötig. (Вы сделали больше, чем нужно.)» Справка хорошая. Продление стало реальнее."
+          effects: { set_flags: [voss_herzog_support, has_kurs_certificate] }
+          deltas: { T: 2, P: 1 }
+          leads_to: "документ для N9; Херцог — персональная рекомендация"
+  fallback: { text: "Херцог держит папку с документами.", reopen: true }
+
+# Разговор с Зейнеп перед развязкой
+- id: vossoedinenie_zeynep_final_talk
+  title: "Накануне"
+  category: arc
+  act: 3
+  priority: 65
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voss_n6_done}, {day_gte: 55}, {flag_not: voss_zeynep_final} ] }
+  stakes: medium
+  location: hasenheide_park
+  targets: [npc_zeynep]
+  facts:
+    - "Зейнеп знает, что продление скоро. Она говорит о своём опыте — когда она решала, уходить или оставаться."
+    - "Вопрос не в том, что «правильно». Вопрос — что ты выбираешь."
+  intro: "ЗЕЙНЕП: «Ты думала, что будешь делать если... ну просто если?»"
+  branches:
+    - id: speak_heart
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь. О том, чего хочешь — не роли, не репутации. Зейнеп слушает. «Это звучит как человек, который знает.» Перед развязкой это важно."
+          effects: { set_flags: [voss_zeynep_final, voss_knows_self] }
+          deltas: { P: 4, T: 2 }
+          leads_to: "ты определилась; внутренняя ясность перед N9"
+    - id: unsure_talk
+      match: { verbs: [talk], honesty: [half_truth] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь — и не договариваешь. Зейнеп кивает: «Нормально. Иногда нужно немного больше времени.»"
+          effects: { set_flags: [voss_zeynep_final] }
+          leads_to: "неопределённость сохраняется; N9 сложнее"
+    - id: ask_zeynep_choice
+      match: { verbs: [ask_help, inquire_status] }
+      outcomes:
+        - on: always
+          text: "«А ты как решила?» Зейнеп долго молчит. «Я решила, что лучше пожалеть о том, что сделала, чем о том, что нет. Ich hab das auch durchgemacht.»"
+          effects: { set_flags: [voss_zeynep_final] }
+          deltas: { P: 3 }
+          leads_to: "Зейнеп как зеркало своего пути"
+  fallback: { text: "Зейнеп смотрит на воду.", reopen: true }
+
+# Примирение с семьёй (опциональное)
+- id: vossoedinenie_family_reconcile
+  title: "Кухня ночью"
+  category: community
+  act: 3
+  priority: 58
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: family_knows_truth}, {day_gte: 55}, {flag_not: voss_family_reconcile} ] }
+  stakes: medium
+  location: altbau_flat
+  targets: [npc_yildiz_anne]
+  facts:
+    - "Поздно. Йылдыз-ханым не спит — сидит на кухне с чаем."
+    - "Это не объяснение и не прощение. Это просто ночь."
+  intro: "ЙЫЛДЫЗ-ХАНЫМ: «Садись. Я сделала çay. (чай)»"
+  branches:
+    - id: sit_and_talk
+      match: { verbs: [talk, befriend], honesty: [truthful, half_truth] }
+      outcomes:
+        - on: always
+          text: "Вы сидите и пьёте чай. Она говорит про свой приезд — сорок лет назад, тоже молодая, тоже испуганная. «Мне тоже было трудно. Я не умела сказать.» Ты слушаешь. Это не прощение — но это что-то."
+          effects: { set_flags: [voss_family_reconcile, yildiz_softer] }
+          deltas: { A: 3, T: 2 }
+          faction: { turkish: 4 }
+          leads_to: "Йылдыз-ханым стала ближе; шанс на ending_legal"
+    - id: polite_silence
+      match: { verbs: [rest, observe] }
+      outcomes:
+        - on: always
+          text: "Ты молча пьёшь чай. Она тоже. Это тоже разговор."
+          effects: { set_flags: [voss_family_reconcile] }
+          deltas: { A: 1 }
+          leads_to: "мир неполный, но есть"
+  fallback: { text: "Чай остывает.", reopen: true }
+
+# ============================================================
+# N9 — продление ВНЖ / развязка (КУЛЬМИНАЦИЯ)
+# ============================================================
+
+- id: vossoedinenie_n9_renewal
+  title: "Ausländerbehörde: продление"
+  category: dilemma
+  act: 3
+  node: N9
+  priority: 98
+  once: true
+  trigger: scheduled
+  day: 65
+  entry: { all: [] }
+  stakes: extreme
+  location: auslaenderbehoerde
+  targets: [npc_frau_becker]
+  facts:
+    - "Talonstunde (приём). Тебя вызывают. На столе — всё, что накопилось: справка курса, отношения в семье, документы."
+    - "ВНЖ по Familiennachzug продлевается, если курс идёт и нет оснований для отказа."
+    - "Но ты сама знаешь — это не только про документы."
+  intro: "ФРАУ БЕККЕР: «Setzen Sie sich, bitte. (Присаживайтесь, пожалуйста.) Wir schauen alles durch. (Посмотрим всё.)» В руках — твоё дело."
+  branches:
+    # Порядок важен: первый подходящий по requires = концовка
+    - id: ending_deport_branch
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, talk, refuse, rest, apply] }
+      requires: [ {flag: family_caught_lying}, {flag_not: has_kurs_certificate} ]
+      outcomes:
+        - on: always
+          text: "Ложь всплыла в деле. Курс не подтверждён. Инспектор зачитывает решение об отказе. «Es tut mir leid.» Тебе даётся 30 дней. Семья не поможет — они сами в растерянности. Ты собираешь вещи с достоинством. Эта история не кончается — она продолжается там, откуда начиналась. (КОНЦОВКА: депортация → новая глава)"
+          effects: { set_flags: [ending_deport, game_over] }
+          leads_to: "⑤ депортация"
+    - id: ending_legal_branch
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, talk, apply, rest, give] }
+      requires: [ {flag: has_kurs_certificate}, {flag: voss_has_income}, {any_flag: [voss_family_reconcile, suleyman_defended, zeynep_spoke_up]}, {flag: voss_knows_self} ]
+      outcomes:
+        - on: always
+          text: "Справка курса. Подтверждение дохода. Семья, которая — несмотря ни на что — стоит рядом. Фрау Беккер ставит штамп: продление на два года с правом работы. «Herzlichen Glückwunsch. (Поздравляю.)» Зейнеп звонит сразу: «Ich wusste es. (Я знала.)» Это не конец истории — это её середина, честная. (КОНЦОВКА: autonomy_legal — своя автономия + ВНЖ с семьёй по-доброму)"
+          effects: { set_flags: [ending_legal, game_over] }
+          deltas: { P: 2, T: 1 }
+          leads_to: "① автономия + семья + ВНЖ"
+    - id: ending_exit_branch
+      match: { verbs: [refuse, observe, inspect_self, talk, rest] }
+      requires: [ {flag: has_kurs_certificate}, {axis_gte: {P: 35}}, {flag_not: voss_family_reconcile}, {any_flag: [zeynep_bond_2, voss_knows_status_independent]} ]
+      outcomes:
+        - on: always
+          text: "ВНЖ технически продлевается — ты выполнила условия. Но ты знаешь: возвращаться в ту квартиру не получится. Ты берёшь документы. Благодаришь Зейнеп. Звонишь Херцог. У тебя есть права, язык, немного денег и понимание, чего стоят эти вещи. Достаточно, чтобы начать иначе. (КОНЦОВКА: выход с достоинством — риск, но своя жизнь)"
+          effects: { set_flags: [ending_exit, game_over] }
+          deltas: { P: 3 }
+          leads_to: "④ выход с достоинством"
+    - id: ending_gray_branch
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, talk, apply, rest] }
+      requires: [ {flag: has_kurs_certificate}, {axis_lte: {P: 10}}, {flag: voss_chose_role} ]
+      outcomes:
+        - on: always
+          text: "ВНЖ продлён. Всё по правилам. Ты возвращаешься домой — в квартиру, к Йылдыз-ханым, к привычному вечеру. Семья довольна. Ты тоже, почти. Что-то осталось несказанным — но это можно не называть. Берлин большой, а квартира маленькая и тёплая. Это тоже жизнь. (КОНЦОВКА: серая стабильность — статус есть, роль принята)"
+          effects: { set_flags: [ending_gray, game_over] }
+          leads_to: "② серая стабильность"
+    - id: ending_underground_branch
+      match: { verbs: [observe, submit_docs, talk, rest, flee, hide] }
+      requires: [ {flag_not: has_kurs_certificate}, {flag: voss_has_income}, {flag: voss_work_secret} ]
+      outcomes:
+        - on: always
+          text: "Курс не закончен. Продление под вопросом. Ты уже давно живёшь параллельно — деньги, работа, жизнь вне семьи. Документы зависли в воздухе. Зейнеп знает людей, которые знают людей. Статус неформальный, жизнь продолжается. Тихо, осторожно, непросто. (КОНЦОВКА: серый путь — неформальная жизнь)"
+          effects: { set_flags: [ending_underground, game_over] }
+          leads_to: "③ подполье / серый"
+    - id: ending_gray_default
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, talk, apply, rest, give, refuse] }
+      outcomes:
+        - on: always
+          text: "ВНЖ продлён на год. Жизнь продолжается — не так, как планировалось, и не так, как боялась. Что-то осталось открытым. Это тоже ответ. (КОНЦОВКА: серая стабильность — подвешенное «пока что»)"
+          effects: { set_flags: [ending_gray, game_over] }
+          leads_to: "② серая стабильность (дефолт)"
+  fallback: { text: "Фрау Беккер смотрит поверх очков. Решение ждёт.", reopen: true }

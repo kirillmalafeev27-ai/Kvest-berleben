@@ -1,0 +1,1011 @@
+# События линии «Война», Акт I (дни 1–14).
+# Старт: plattenbau_flat, флаги [paragraph24, has_child], Deutsch 10, 400 €, таймер «статус §24».
+# Главный конфликт: травма + «это временно» + вина выжившего + расщеплённая семья.
+# Узлы Акт I: N1 (Jobcenter), N2 (пособие vs работа), N3 (русскоязычная среда), N4 (Оксана vs замкнуться).
+# Гард-рейлы 8.4: достоинство героя, без смакования боли, языки звучат (uk/de с переводом).
+
+events:
+
+# ---------- ДЕНЬ 1: прибытие ----------
+- id: voyna_arrival
+  title: "Квартира, которая не твоя"
+  category: arc
+  act: 1
+  priority: 100
+  once: true
+  trigger: scheduled
+  day: 1
+  entry: { all: [ {flag: paragraph24}, {flag_not: voyna_arrived} ] }
+  stakes: trivial
+  location: plattenbau_flat
+  facts:
+    - "Квартира немецкой семьи — чужие тарелки, чужие фотографии на стенах. Хозяева уехали на лето, оставили ключи."
+    - "Дочь Соня, 7 лет, спит на диване. За окном — панелька Марцана, серая и почти знакомая."
+    - "§24: статус есть, права есть. Bürgergeld можно оформить. Работать можно. Это всё — потом."
+    - "Телефон молчит. Мужу ты написала три часа назад."
+  intro: "Первый вечер в чужой квартире. Соня наконец заснула. Ты одна с телефоном в руках."
+  branches:
+    - id: call_home
+      match: { verbs: [talk, ask_help] }
+      outcomes:
+        - on: always
+          text: "Он берёт трубку — голос живой, устал. Говорите ни о чём: погода, как Соня, он ел. Когда вешаешь трубку — тише, чем было. И тяжелее. Он — там. Ты — здесь."
+          effects: { set_flags: [voyna_arrived, called_home], stress: -5 }
+          deltas: { T: 1 }
+          leads_to: "звонок домой — ресурс и рана одновременно"
+    - id: observe_room
+      match: { verbs: [observe, inspect_self, search] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь по квартире, как по музею чужой жизни. На холодильнике магниты с Маллоркой. В ящике — немецкие таблетки, которые ты не знаешь. Всё не твоё. Соня спит."
+          effects: { set_flags: [voyna_arrived], stress: 5 }
+          leads_to: "ощущение временности с первого дня"
+    - id: try_sleep
+      match: { verbs: [rest] }
+      outcomes:
+        - on: always
+          text: "Ты ложишься. Потолок чужой. Мысли не останавливаются — дом, Сергій, что будет, когда закончится. Под утро — всё-таки провал в сон."
+          effects: { set_flags: [voyna_arrived], fatigue: -10, stress: 3 }
+          leads_to: "первая ночь пережита"
+  fallback: { text: "Первый вечер. Соня спит. Что делаешь?", reopen: true }
+
+# ---------- ДЕНЬ 2: чат Оксаны ----------
+- id: voyna_oksana_chat
+  title: "Волонтёрський чат"
+  category: arc
+  act: 1
+  priority: 90
+  once: true
+  trigger: scheduled
+  day: 2
+  entry: { all: [ {flag: voyna_arrived}, {flag_not: knows_oksana} ] }
+  stakes: low
+  location: plattenbau_flat
+  targets: [npc_oksana]
+  facts:
+    - "В телефоне — приглашение в чат украинских переселенцев Берлина. 847 участников. Пишут по-украински и по-русски."
+    - "Оксана, координаторка: 'Всі нові — пишіть у закріп, там всі відповіді по §24 та Jobcenter.' (Все новые — пишите в закреп, там все ответы по §24 и Jobcenter.)"
+    - "В чате: где сдать документы, где дешевле продукты, где школа для Сони, где психолог."
+  intro: "ОКСАНА (чат): «Ласкаво просимо. (Добро пожаловать.) Ти нова? Напиши, звідки, скільки дітей — допоможемо.»"
+  branches:
+    - id: write_back
+      match: { verbs: [talk, ask_help, apply] }
+      outcomes:
+        - on: always
+          text: "Ты пишешь: откуда, Соня, §24. За десять минут — три ответа с конкретными адресами. Оксана: 'Завтра о 10 ми зустрічаємося біля Jobcenter. Приходь.' (Завтра в 10 встречаемся у Jobcenter. Приходи.)"
+          effects: { set_flags: [knows_oksana, jobcenter_meeting_set] }
+          deltas: { A: 1 }
+          leads_to: "завтра N1 — Jobcenter с Оксаной"
+    - id: read_only
+      match: { verbs: [observe, inspect_self] }
+      outcomes:
+        - on: always
+          text: "Ты листаешь, не пишешь. Чужие имена, чужие адреса. Полезно. Но писать незнакомым про себя — пока не можешь."
+          effects: { set_flags: [knows_oksana_passively] }
+          leads_to: "Оксана появится позже (N4) — сигнал к выбору: открыться или замкнуться"
+    - id: leave_chat
+      match: { verbs: [refuse, move] }
+      outcomes:
+        - on: always
+          text: "Ты выходишь из чата. Незнакомые люди, их проблемы. Разберёшься сама — ты привыкла."
+          effects: { leaning: { bubble: 1 } }
+          deltas: { P: 1 }
+          leads_to: "путь одиночки; N4 — развилка замкнуться vs открыться"
+  fallback: { text: "Телефон со ссылкой на чат лежит перед тобой.", reopen: true }
+
+# ---------- ДЕНЬ 3: N1 — Jobcenter ----------
+- id: voyna_node_jobcenter
+  title: "Jobcenter"
+  category: dilemma
+  act: 1
+  node: N1
+  priority: 88
+  once: true
+  trigger: scheduled
+  day: 3
+  entry: { all: [ {flag: voyna_arrived}, {flag_not: voyna_n1_done} ] }
+  stakes: medium
+  location: jobcenter
+  targets: [npc_jobcenter_berater]
+  facts:
+    - "Jobcenter Neukölln. Зал ожидания, номерки. §24 даёт прямой доступ к Bürgergeld — это законно и без очереди на месяцы."
+    - "Пан Мюллер: нужны паспорт, §24-Bescheid, Meldeadresse. Bürgergeld ~450 € на взрослого + ~250 € на ребёнка."
+    - "Это не подачка — это право, закреплённое законом. Но в очереди стоять тяжело, когда дома ты обеспечивала семью сама."
+  intro: "ПАН МЮЛЛЕР: «Guten Morgen. Haben Sie den §24-Bescheid mitgebracht? (Доброе утро. Вы принесли документ о §24?)»"
+  branches:
+    - id: submit_docs_calm
+      match: { verbs: [submit_docs, apply, talk], honesty: [truthful], tone: [polite, neutral] }
+      outcomes:
+        - on: always
+          text: "Документы на месте. Мюллер методично сверяет бумаги, ставит галочки. «Alles in Ordnung. (Всё в порядке.) Erste Zahlung in zwei Wochen.» Выходишь из кабинета: сделала. И почему-то стыдно — хотя не должно быть."
+          effects: { set_flags: [voyna_n1_done, buergereld_applied], money: 0 }
+          deltas: { P: -2, L: 2 }
+          skill_xp: { byurokratiya: 5 }
+          leads_to: "пособие оформлено — но ось PRIDE задета; первые деньги через 2 недели"
+    - id: ask_oksana_help
+      match: { verbs: [ask_help, befriend] }
+      requires: [ {flag: knows_oksana} ]
+      outcomes:
+        - on: always
+          text: "Оксана стоит рядом, тихо переводит немецкий, подсказывает бланки. Вместе — быстрее. Мюллер привык к таким тандемам. «Готово. Две недели.» Оксана: «Бачиш? Нічого страшного. (Видишь? Ничего страшного.)»"
+          effects: { set_flags: [voyna_n1_done, buergereld_applied, oksana_helped_n1] }
+          deltas: { A: 1, P: -1, L: 2 }
+          skill_xp: { byurokratiya: 4, deutsch: 2 }
+          leads_to: "Оксана показала себя как ресурс; доверие растёт"
+    - id: demand_more
+      match: { verbs: [persuade, threaten], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты не понимаешь, почему так медленно. Голос повышается. Мюллер терпеливо повторяет по-немецки. Ничего не меняется — только очередь косится. Потом берёшь себя в руки. Документы всё равно принимают."
+          effects: { set_flags: [voyna_n1_done, buergereld_applied], stress: 8, dossier: "нервничала при первом визите (понятно)" }
+          deltas: { G: 3, P: 2, L: 1 }
+          leads_to: "бюрократия работает медленно, но работает"
+    - id: pride_refuse
+      match: { verbs: [refuse] }
+      requires: [ {axis_gte: {P: 25}} ]
+      outcomes:
+        - on: always
+          text: "Ты разворачиваешься у кабинета. Не сегодня. Не можешь — стоять в очереди за деньгами, которые... Выходишь. Мюллер смотрит вслед без удивления — он видел такое."
+          effects: { leaning: { bubble: 1 } }
+          deltas: { P: 3 }
+          leads_to: "400 € тают; N2 — давление выбора пособие vs работа острее"
+  fallback: { text: "Мюллер ждёт ваш §24-Bescheid.", reopen: true }
+
+# ---------- ДЕНЬ 4 ----------
+- id: voyna_sonya_school
+  title: "Школа для Сони"
+  category: arc
+  act: 1
+  priority: 70
+  once: true
+  trigger: scheduled
+  day: 4
+  entry: { all: [ {flag: has_child}, {flag_not: sonya_school_done} ] }
+  stakes: low
+  location: plattenbau_flat
+  facts:
+    - "Соне 7 лет. По закону она обязана ходить в школу — и это не проблема, это право. Ближайшая принимает детей §24."
+    - "Но Соня плачет утром: «Мама, я не хочу. Я не понимаю немецкий.»"
+    - "«Вільгельм-Буш-Шуле» принимает детей-переселенцев и есть класс интеграции."
+  intro: "Соня стоит в дверях с портфелем и красными глазами. «Мамо, я боюся.»"
+  branches:
+    - id: go_together
+      match: { verbs: [offer_help, move, talk], tone: [polite, neutral] }
+      outcomes:
+        - on: always
+          text: "Вы идёте вместе. У школы — ещё три мамы с детьми в похожих куртках, с похожими лицами. Учительница говорит медленно, улыбается Соне. Класс маленький. «Komm, dein Platz ist hier. (Иди, твоё место здесь.)» Соня всё равно оглядывается — но входит."
+          effects: { set_flags: [sonya_school_done, sonya_in_school], stress: -5 }
+          deltas: { A: 2 }
+          leads_to: "Соня в школе; новые контакты среди мам-переселенок"
+    - id: send_alone
+      match: { verbs: [move, work] }
+      outcomes:
+        - on: always
+          text: "Ты проводишь её до угла. «Ты справишься. Ты умная.» Смотришь, как она идёт одна — маленькая спина с большим портфелем. День потом — как через вату."
+          effects: { set_flags: [sonya_school_done, sonya_in_school], stress: 8 }
+          leads_to: "Соня справляется; но тяжело"
+  fallback: { text: "Соня стоит у двери. Во сколько нужно выходить?", reopen: true }
+
+# ---------- ДЕНЬ 5: N2 — пособие vs работа ----------
+- id: voyna_node_buergergeld_vs_work
+  title: "Пособие или работа"
+  category: dilemma
+  act: 1
+  node: N2
+  priority: 82
+  once: true
+  trigger: scheduled
+  day: 5
+  entry: { all: [ {flag_not: voyna_n2_done} ] }
+  stakes: high
+  location: plattenbau_flat
+  facts:
+    - "§24: можно работать сразу — права есть. Bürgergeld покроет базовое, но 700 € на двоих в Берлине — это туго."
+    - "Работа: нужно признание диплома (долго) или найти что-то не по специальности (быстро, но больно по достоинству)."
+    - "Оксана в чате: 'Є вакансія в кафе — без мови, з навчанням.' (Есть вакансия в кафе — без языка, с обучением.)"
+    - "Дома ты была главным бухгалтером. Это — Берлин."
+  intro: "На столе — два листка: распечатка вакансии из чата и бланк на Bürgergeld. Соня в школе. Ты одна с этим выбором."
+  branches:
+    - id: apply_work_now
+      match: { verbs: [apply, work, submit_docs] }
+      outcomes:
+        - on: always
+          text: "Ты звонишь по вакансии из чата. Кафе, мойка посуды, 12 € в час, гибкий график. На другом конце — усталый голос на смеси укр./де. «Когда можешь начать?» — «Завтра». Это не то, чем ты хотела заниматься. Но это ты — выбираешь сама."
+          effects: { set_flags: [voyna_n2_done, has_income, works_cafe], leaning: {legal: 1} }
+          deltas: { P: -2, A: 1 }
+          leads_to: "доход есть, достоинство царапнуто — но ты не пассивна; N6 — фронт vs работа"
+    - id: wait_for_proper_job
+      match: { verbs: [search, inquire_status, apply] }
+      requires: [ {axis_gte: {P: 20}} ]
+      outcomes:
+        - on: always
+          text: "Ты ищешь вакансии по специальности. Бухгалтер, аналитик, финансы. Большинство — «nur Deutsch C1». Одно CV отправлено. Ждать."
+          effects: { set_flags: [voyna_n2_done, searching_work_proper], leaning: {legal: 1} }
+          deltas: { P: 2 }
+          leads_to: "пособие держит пока; ожидание — источник давления; диплом нужно признавать"
+    - id: accept_buergereld_only
+      match: { verbs: [rest, refuse, observe] }
+      outcomes:
+        - on: always
+          text: "Пока — пособие. Не сейчас с работой. Соня только начала школу, ты сама только начала. Оксана поймёт. Главное — сначала выдохнуть. «Это временно» — говоришь себе. Как и всё остальное тут."
+          effects: { set_flags: [voyna_n2_done, on_buergereld_only], leaning: {bubble: 1} }
+          deltas: { P: 1 }
+          leads_to: "пассивная стратегия; N6 — новость с фронта ударит по этому хрупкому покою"
+  fallback: { text: "Листки лежат на столе. Чай остывает.", reopen: true }
+
+# ---------- ДЕНЬ 6 ----------
+- id: voyna_call_home_2
+  title: "Звонок: он в порядке"
+  category: ambient
+  act: 1
+  priority: 55
+  once: true
+  trigger: scheduled
+  day: 6
+  entry: { all: [ {flag: voyna_arrived}, {flag_not: second_call_done} ] }
+  stakes: low
+  location: plattenbau_flat
+  facts:
+    - "Сергій пишет в 11 вечера: «Всё нормально. Не звони — могу не смочь ответить в любой момент.»"
+    - "«Нормально» — это слово, которое больше не значит то, что значило раньше."
+  intro: "Сообщение в 23:14: «Живий. Цілую вас обох. (Живой. Целую вас обоих.)»"
+  branches:
+    - id: answer_message
+      match: { verbs: [talk, give, offer_help] }
+      outcomes:
+        - on: always
+          text: "Ты пишешь: «И мы. Соня спрашивает про тебя каждый день.» Отправляешь. Три точки — он читает. Потом тишина. Ты ждёшь десять минут. Потом кладёшь телефон."
+          effects: { set_flags: [second_call_done], stress: -3 }
+          leads_to: "связь живая — и каждый раз обрывается"
+    - id: just_read
+      match: { verbs: [observe, rest] }
+      outcomes:
+        - on: always
+          text: "Ты читаешь. Перечитываешь. Убираешь телефон под подушку."
+          effects: { set_flags: [second_call_done], stress: 5 }
+          leads_to: "молчание как самозащита"
+  fallback: { text: "Три слова на экране.", reopen: true }
+
+# ---------- ДЕНЬ 7: N3 — русскоязычная среда ----------
+- id: voyna_node_russian_encounter
+  title: "В магазине"
+  category: dilemma
+  act: 1
+  node: N3
+  priority: 78
+  once: true
+  trigger: scheduled
+  day: 7
+  entry: { all: [ {flag_not: voyna_n3_done} ] }
+  stakes: medium
+  location: russian_shop
+  targets: [npc_irina_sosedka]
+  facts:
+    - "Русский магазин в Марцане: гречка, квашеная капуста, знакомые пачки. Соня тащит за руку к полке с конфетами."
+    - "За соседней тележкой — Ирина, русская, живёт тут 12 лет. Слышит, как ты говоришь с Соней по-украински."
+    - "Язык у вас общий. Контекст — совсем разный."
+  intro: "ИРИНА: «Украинка? Привет. Я Ирина. Давно тут живёшь? Как ты вообще?»"
+  branches:
+    - id: open_carefully
+      match: { verbs: [talk], honesty: [truthful, half_truth], tone: [polite, neutral] }
+      outcomes:
+        - on: always
+          text: "Вы говорите у холодильника с творогом. Она рассказывает про квартал, где школа получше, где аптека. Аккуратно обходит войну — и ты тоже. Прощаются по-человечески. «Если что — я в соседнем подъезде.»"
+          effects: { set_flags: [voyna_n3_done, irina_neutral_contact] }
+          deltas: { A: 1 }
+          leads_to: "контакт без конфликта — практически полезный; напряжение под поверхностью осталось"
+    - id: name_elephant
+      match: { verbs: [talk, persuade], honesty: [truthful], tone: [aggressive, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь напрямую: что там происходит, почему ты здесь, что ты думаешь. Ирина бледнеет немного, отвечает тихо: «Я понимаю. Я против. Но мне тут жить, и я боюсь говорить об этом вслух.» Пауза. Потом она всё равно даёт номер аптеки."
+          effects: { set_flags: [voyna_n3_done, irina_honest_talk], stress: 8 }
+          deltas: { G: 2, T: 1 }
+          leads_to: "честный разговор — тяжело, но не пустой; Ирина не враг"
+    - id: cold_polite
+      match: { verbs: [refuse, move], tone: [cold, polite] }
+      outcomes:
+        - on: always
+          text: "«Спасибо, всё хорошо» — и обходишь её тележку. Соня не понимает, почему мама не захотела разговаривать. В очереди — неловко стоять рядом."
+          effects: { set_flags: [voyna_n3_done] }
+          deltas: { P: 1 }
+          leads_to: "изоляция — чище, но теснее"
+  fallback: { text: "Ирина ждёт, держа пачку творога.", reopen: true }
+
+# ---------- ДЕНЬ 8 ----------
+- id: voyna_first_shift
+  title: "Первая смена"
+  category: arc
+  act: 1
+  priority: 60
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: works_cafe}, {flag_not: first_shift_done} ] }
+  stakes: low
+  location: cafe_third_wave
+  facts:
+    - "Кафе в Кройцберге. Хозяйка — немка лет сорока, говорит медленно и жестами. Коллеги: одна марокканка, один поляк."
+    - "Первая смена: гора посуды, запах кофе, ноги к вечеру гудят."
+    - "Зарплата — кэш пока, потом официально. Соня у соседки из чата."
+  intro: "Хозяйка: «Guten Morgen. Ich bin Petra. Du bist... Oksana schickte dich? (Доброе утро. Я Петра. Тебя прислала Оксана?)»"
+  branches:
+    - id: work_silent
+      match: { verbs: [work, rest, observe] }
+      outcomes:
+        - on: always
+          text: "Ты моешь посуду. Молча. Марокканка показывает, куда ставить. Поляк кивает — без лишних слов. В конце смены Петра кладёт деньги и говорит: «Morgen auch? (Завтра тоже?)» Ты киваешь."
+          effects: { set_flags: [first_shift_done], money: 96 }
+          deltas: { P: -1 }
+          skill_xp: { deutsch: 2 }
+          leads_to: "доход; маленький якорь в Берлине"
+    - id: try_talk
+      match: { verbs: [talk, befriend], tone: [polite, charming] }
+      outcomes:
+        - on: always
+          text: "В перерыве — чай и ломаный разговор. Имена, откуда, дети есть. Марокканка смеётся над твоим произношением — беззлобно. Чуть теплее."
+          effects: { set_flags: [first_shift_done], money: 96, stress: -5, faction: {neighbors: 3} }
+          deltas: { A: 1 }
+          skill_xp: { deutsch: 4 }
+          leads_to: "маленькие связи; берлинская жизнь начинает набирать текстуру"
+  fallback: { text: "Петра смотрит, ждёт начала смены.", reopen: true }
+
+# ---------- ДЕНЬ 10: N4 — Оксана vs замкнуться ----------
+- id: voyna_node_oksana_vs_isolation
+  title: "Суботник"
+  category: dilemma
+  act: 1
+  node: N4
+  priority: 76
+  once: true
+  trigger: scheduled
+  day: 10
+  entry: { all: [ {flag_not: voyna_n4_done} ] }
+  stakes: medium
+  location: plattenbau_flat
+  targets: [npc_oksana]
+  facts:
+    - "Оксана зовёт на «суботник» — встреча переселенок: чай, дети вместе, документы помочь оформить."
+    - "Приедут 12 женщин, будет волонтёр-юрист. Соня может поиграть с другими детьми."
+    - "Или: остаться дома. Написать мужу. Попробовать найти работу по специальности."
+  intro: "ОКСАНА: «Приходь. Там люди, які розуміють. Не треба нічого пояснювати — вони самі звідти. (Приходи. Там люди, которые понимают. Не надо ничего объяснять — они сами оттуда.)»"
+  branches:
+    - id: go_meet
+      match: { verbs: [move, talk, ask_help, offer_help] }
+      outcomes:
+        - on: always
+          text: "Ты идёшь. Оксана встречает у дверей, Соня сразу убегает к детям. За час — бланки оформлены, три полезных телефона в записной книжке, и Галина из Одессы рассказала, как записаться на языковые курсы. Ты не говорила о своём — только слушала. Этого хватило."
+          effects: { set_flags: [voyna_n4_done, oksana_community_joined], faction: {ukrainian_volunteers: 10} }
+          deltas: { A: 2, P: -1 }
+          skill_xp: { byurokratiya: 3 }
+          leads_to: "волонтёрская сеть открыта; Оксана — союзница; лайфхаки появляются быстрее"
+    - id: go_but_guard
+      match: { verbs: [move, observe], tone: [cold, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты приходишь — но молчишь про себя. Слушаешь, записываешь адреса. Оксана не давит. «Ти нова — це нормально. Приходь ще. (Ты новая — это нормально. Приходи ещё.)»"
+          effects: { set_flags: [voyna_n4_done, oksana_community_cautious], faction: {ukrainian_volunteers: 5} }
+          deltas: { P: 1 }
+          leads_to: "полу-открытая позиция; Оксана остаётся доступной"
+    - id: stay_home
+      match: { verbs: [refuse, rest] }
+      outcomes:
+        - on: always
+          text: "Ты пишешь Оксане: «Сьогодні не можу. (Сегодня не могу.)» Остаёшься с телефоном. Ищешь новости из дома. Находишь — и лучше бы не находила. День тяжёлый."
+          effects: { set_flags: [voyna_n4_done, isolated_path], stress: 12 }
+          deltas: { P: 2 }
+          leads_to: "путь одиночки; N6 — новость с фронта ударит без буфера"
+  fallback: { text: "Телефон с сообщением Оксаны.", reopen: true }
+
+# ---------- РАБОЧИЕ СМЕНЫ (пул) ----------
+- id: voyna_cafe_shift
+  title: "Смена в кафе"
+  category: arc
+  act: 1
+  priority: 40
+  trigger: pool
+  weight: 2.0
+  cooldown_days: 1
+  entry: { all: [ {flag: works_cafe} ], none: [ {flag: voyna_news_front_done} ] }
+  stakes: low
+  location: cafe_third_wave
+  facts:
+    - "Петра кивает на гору кружек. Обычная смена."
+    - "Немецкий по чуть-чуть: слова, которые слышишь по десять раз в день, начинают оседать."
+  intro: "Петра: «Du weißt schon, was zu tun ist. (Ты уже знаешь, что делать.)»"
+  branches:
+    - id: work_routine
+      match: { verbs: [work, rest] }
+      outcomes:
+        - on: always
+          text: "Смена прошла. Руки в мыле, ноги гудят. Деньги в кармане — это реальные деньги. Ты заработала сама."
+          effects: { money: 96, fatigue: 15 }
+          skill_xp: { deutsch: 3 }
+          leads_to: "постепенная стабилизация"
+    - id: ask_petra_about_german
+      match: { verbs: [talk, ask_help] }
+      outcomes:
+        - on: always
+          text: "Петра объясняет слова медленно. Когда ты правильно повторяешь — улыбается. Это маленькое. Но сегодня это нужно."
+          effects: { money: 96, fatigue: 12, stress: -4 }
+          skill_xp: { deutsch: 6 }
+          deltas: { A: 1 }
+  fallback: { text: "Кружки сами себя не помоют.", reopen: true }
+
+# ---------- ДЕНЬ 12: N5 — Андрій ----------
+- id: voyna_node_andriy_first
+  title: "Земляк у шпэти"
+  category: dilemma
+  act: 1
+  node: N5
+  priority: 74
+  once: true
+  trigger: scheduled
+  day: 12
+  entry: { all: [ {flag_not: voyna_n5_done} ] }
+  stakes: medium
+  location: spaeti_karim
+  targets: [npc_andriy]
+  facts:
+    - "У шпэти — мужчина лет тридцати пяти с берлинским U-Bahn-планом в руках. Слышит твой украинский."
+    - "Андрій: два года в Берлине. Не беженец — уехал ещё до войны. Видел, как она началась, отсюда."
+    - "Он не знает, возвращаться ли. И это слышно в каждом его слове."
+  intro: "АНДРІЙ: «Ти нова? Я Андрій. Давно тут і досі не звик. Як ти?»"
+  branches:
+    - id: talk_honest
+      match: { verbs: [talk, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Вы стоите у шпэти двадцать минут. Он говорит о войне так, как можно говорить только с кем-то, кто понимает без объяснений. «Я іноді не знаю — чи маю право сидіти тут. (Я иногда не знаю — имею ли право сидеть здесь.)» — «Я теж», — говоришь ты."
+          effects: { set_flags: [voyna_n5_done, knows_andriy, andriy_honest_start] }
+          deltas: { T: 1, A: 1 }
+          leads_to: "зеркало темы вины и выбора; Андрій — ресурс и нагрузка одновременно"
+    - id: stay_surface
+      match: { verbs: [talk], tone: [polite, cold, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты меняешься контактами, говоришь про бытовое. Он понимает — не давит. «Якщо що — пиши. (Если что — пиши.)»"
+          effects: { set_flags: [voyna_n5_done, knows_andriy] }
+          leads_to: "контакт есть, глубины пока нет"
+    - id: avoid
+      match: { verbs: [refuse, move] }
+      outcomes:
+        - on: always
+          text: "Ты берёшь хлеб и уходишь. Не сегодня. Слишком много незнакомых людей уже за эту неделю."
+          effects: { set_flags: [voyna_n5_done] }
+          deltas: { P: 1 }
+          leads_to: "путь одиночки; Андрій может появиться позже"
+  fallback: { text: "Андрій ждёт, держа U-Bahn-план.", reopen: true }
+
+# ---------- ДЕНЬ 14: реактивное давление ----------
+- id: voyna_money_pressure
+  title: "Деньги кончаются"
+  category: pressure
+  act: 1
+  priority: 50
+  once: true
+  trigger: scheduled
+  day: 14
+  entry: { all: [ {money_lt: 150}, {flag_not: buergereld_applied} ] }
+  stakes: high
+  location: plattenbau_flat
+  facts:
+    - "400 € — это было на старте. Еда, телефон, транспорт, Соня — всё это стоит. Bürgergeld ещё не оформлено."
+    - "Jobcenter принимает до 16:00."
+  intro: "Кошелёк пустеет быстрее, чем ты ожидала."
+  branches:
+    - id: go_now
+      match: { verbs: [apply, move, submit_docs] }
+      outcomes:
+        - on: always
+          text: "Ты берёшь документы и идёшь в Jobcenter. Без гордости, просто по необходимости. Мюллер принимает бланк без вопросов. Первые деньги через две недели. До тех пор — тянуть."
+          effects: { set_flags: [buergereld_applied] }
+          deltas: { P: -2, L: 2 }
+          leads_to: "пособие оформлено; кризис отложен"
+    - id: call_oksana_help
+      match: { verbs: [ask_help] }
+      requires: [ {any_flag: [knows_oksana, oksana_community_joined]} ]
+      outcomes:
+        - on: always
+          text: "Ты пишешь Оксане. Через час она скидывает контакт фонда экстренной помощи — 200 € на двухнедельный запрос. «Не соромся. Ми всі так починали. (Не стыдись. Мы все так начинали.)»"
+          effects: { money: 200, set_flags: [buergereld_applied], faction: {ukrainian_volunteers: 5} }
+          deltas: { A: 1, P: -1 }
+          leads_to: "сеть сработала; теперь есть долг — отдать другим"
+  fallback: { text: "Деньги кончаются. Что делаешь?", reopen: true }
+
+# ---------- КОНЕЦ АКТА I: фоновые события ----------
+- id: voyna_park_relief
+  line: shared
+  title: "Парк с Соней"
+  category: ambient
+  act: 1
+  priority: 25
+  trigger: pool
+  weight: 1.0
+  cooldown_days: 3
+  entry: { all: [ {flag: voyna_arrived} ] }
+  stakes: trivial
+  location: hasenheide_park
+  facts:
+    - "Хазенхайде, Нойкёльн. Соня бежит к горке. Другие дети. Мамы на скамейках."
+    - "На минуту — просто мамы в парке. Война где-то ещё."
+  intro: "Соня: «Мамо, можна ще трішки? (Мама, можно ещё чуть?)»"
+  branches:
+    - id: just_sit
+      match: { verbs: [rest, observe] }
+      outcomes:
+        - on: always
+          text: "Ты сидишь и смотришь, как Соня гоняет за голубями. Берлин, солнце, и она живая и носится. Всё остальное — потом."
+          effects: { stress: -15, fatigue: -8 }
+          deltas: { A: 1 }
+    - id: talk_to_moms
+      match: { verbs: [talk, befriend] }
+      outcomes:
+        - on: always
+          text: "Рядом — немка с коляской и украинка из Харькова. Три минуты ни о чём: погода, возраст детей. Этого достаточно."
+          effects: { stress: -10, faction: {neighbors: 2} }
+          skill_xp: { deutsch: 2 }
+  fallback: { text: "Парк. Соня зовёт.", reopen: true }
+
+# === АКТ II (дни 15–60) ===
+# ---------- ДЕНЬ 16: N6 — новость с фронта ----------
+- id: voyna_node_news_from_front
+  title: "Сообщение в 3:47"
+  category: pressure
+  act: 2
+  node: N6
+  priority: 90
+  once: true
+  trigger: scheduled
+  day: 16
+  entry: { all: [ {flag_not: voyna_news_front_done} ] }
+  stakes: extreme
+  location: plattenbau_flat
+  facts:
+    - "3:47 ночи. Сообщение от сестры: «Ваше місто бомбили. Наш район. Усі живі, але... (Ваш город бомбили. Наш район. Все живы, но...)»"
+    - "Сергій не отвечает. Два часа. Потом — одна галочка. Читает."
+    - "Это не первый раз. И каждый раз — как первый."
+  intro: "Телефон светится в темноте."
+  branches:
+    - id: call_sergiy
+      match: { verbs: [talk, ask_help] }
+      outcomes:
+        - on: always
+          text: "Он берёт трубку в 4:20. Живой. Голос чужой — усталый чужой голос. «Я в порядку. Не буди Соню. Спи.» Ты не спишь до утра."
+          effects: { set_flags: [voyna_news_front_done, front_call_alive], stress: 20 }
+          deltas: { G: 3 }
+          leads_to: "он живой — и это и облегчение, и ужас одновременно"
+    - id: read_news
+      match: { verbs: [observe, search] }
+      outcomes:
+        - on: always
+          text: "Ты читаешь новости. Находишь. Квартал. Видео. Не смотришь до конца. Соня спит рядом. Ты закрываешь телефон."
+          effects: { set_flags: [voyna_news_front_done], stress: 25 }
+          deltas: { G: 4 }
+          leads_to: "новость поглотила; завтра нужно будет жить дальше"
+    - id: write_oksana
+      match: { verbs: [ask_help, talk] }
+      requires: [ {flag: knows_oksana} ]
+      outcomes:
+        - on: always
+          text: "Ты пишешь Оксане просто: «Новини. Не можу.» Через три минуты — она: «Я знаю. Я тут. До ранку, якщо треба. (Знаю. Я здесь. До утра, если надо.)» Ты не одна с этим."
+          effects: { set_flags: [voyna_news_front_done, oksana_crisis_support], stress: 12, faction: {ukrainian_volunteers: 8} }
+          deltas: { A: 2 }
+          leads_to: "Оксана как буфер; сеть держит в момент, когда сложнее всего"
+  fallback: { text: "Телефон светится. Читаешь?", reopen: true }
+
+# ---------- ДЕНЬ 18: relief после кризиса ----------
+- id: voyna_after_news_relief
+  title: "На следующее утро"
+  category: ambient
+  act: 2
+  priority: 65
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: voyna_news_front_done}, {flag_not: after_news_relief_done} ] }
+  stakes: low
+  location: plattenbau_flat
+  facts:
+    - "Соня не знает, что было ночью. Она просит блинчики."
+    - "Делать блинчики — это то, что можно сделать прямо сейчас."
+  intro: "СОНЯ: «Мамо, зроби млинці? З варенням. (Мама, сделай блинчики? С вареньем.)»"
+  branches:
+    - id: make_pancakes
+      match: { verbs: [work, offer_help, give] }
+      outcomes:
+        - on: always
+          text: "Ты делаешь блинчики. Муки нет — идёшь в магазин за мукой. Соня помогает мешать тесто и измазывает нос. Едите за столом чужой квартиры. Это не дом. Но сегодня достаточно."
+          effects: { set_flags: [after_news_relief_done], stress: -15, hunger: -10 }
+          deltas: { A: 2 }
+          leads_to: "маленький якорь после кризиса"
+    - id: survive_the_day
+      match: { verbs: [rest, move] }
+      outcomes:
+        - on: always
+          text: "«Блинчиков нет, но есть каша.» Соня морщится, но ест. Ты смотришь в окно на Марцан."
+          effects: { set_flags: [after_news_relief_done], stress: -5 }
+          leads_to: "день пережит"
+  fallback: { text: "Соня ждёт ответа про блинчики.", reopen: true }
+
+# ---------- ДЕНЬ 22: N5 — Андрій, глубже ----------
+- id: voyna_andriy_deeper
+  title: "Андрій: «чи повернусь»"
+  category: arc
+  act: 2
+  priority: 63
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_andriy}, {flag_not: andriy_deeper_done} ] }
+  stakes: medium
+  location: hasenheide_park
+  targets: [npc_andriy]
+  facts:
+    - "Андрій предложил встретиться. Просто погулять. Он принёс термос с кавой."
+    - "Два года в Берлине — он знает город лучше, чем себя."
+    - "Тема, которую оба обходят: возвращаться или нет."
+  intro: "АНДРІЙ: «Я іноді думаю — якби я поїхав раніше... (Я иногда думаю — если бы уехал раньше...)» Не заканчивает."
+  branches:
+    - id: talk_about_return
+      match: { verbs: [talk, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Ти думаєш про повернення?» — «Кожного дня. І кожного дня не знаю відповіді. (Ты думаешь о возвращении? — Каждый день. И каждый день не знаю ответа.)» — «Я теж.» Сидите молча. Это не пустое молчание."
+          effects: { set_flags: [andriy_deeper_done, andriy_mirror_active] }
+          deltas: { T: 1, A: 1 }
+          leads_to: "зеркало «остаться/вернуться» активировано; Андрій усилит N9"
+    - id: give_advice
+      match: { verbs: [persuade, offer_help] }
+      outcomes:
+        - on: always
+          text: "«Надо оставаться. Строить здесь», — говоришь ты. Или наоборот. Андрій слушает. «Можливо. Але тобі це легше казати, ніж мені — чи ні? (Возможно. Но тебе это легче говорить, чем мне — или нет?)»"
+          effects: { set_flags: [andriy_deeper_done] }
+          deltas: { P: 1 }
+          leads_to: "ответа нет; зеркало показывает отсутствие простого решения"
+  fallback: { text: "Пауза. Термос стынет.", reopen: true }
+
+# ---------- ДЕНЬ 28: попытка признания диплома ----------
+- id: voyna_diploma_quest
+  title: "Диплом на полке"
+  category: arc
+  act: 2
+  priority: 58
+  once: true
+  trigger: scheduled
+  day: 28
+  entry: { all: [ {flag_not: diploma_quest_done} ] }
+  stakes: medium
+  location: jobcenter
+  targets: [npc_jobcenter_berater]
+  facts:
+    - "Признание украинского диплома бухгалтера в Германии: сначала IHK или Anabin-база, потом длинная процедура через KMK. Год-два минимум."
+    - "Мюллер знает про это. Но Jobcenter может помочь с оценкой квалификации — бесплатно."
+    - "Пока нет признания — работа только «не по специальности» или обучение заново."
+  intro: "ПАН МЮЛЛЕР: «Anerkennung Ihres Abschlusses — das ist ein langer Weg. (Признание вашего диплома — это долгий путь.) Aber es gibt Optionen.»"
+  branches:
+    - id: start_process
+      match: { verbs: [apply, submit_docs, inquire_status] }
+      outcomes:
+        - on: always
+          text: "Ты берёшь список документов. Месяцы работы впереди. Но это — путь. Первый шаг к тому, чтобы снова быть бухгалтером. В Берлине."
+          effects: { set_flags: [diploma_quest_done, diploma_process_started] }
+          deltas: { L: 2, P: 1 }
+          skill_xp: { byurokratiya: 6 }
+          leads_to: "долгосрочный вектор; N9 — признание диплома как путь к ending_legal"
+    - id: ask_oksana_about_it
+      match: { verbs: [ask_help] }
+      requires: [ {flag: knows_oksana} ]
+      outcomes:
+        - on: always
+          text: "Оксана знает кого надо. «Ірина з нашого чату пройшла це — телефонуй їй. Вона допоможе. (Ирина из нашего чата прошла это — звони ей. Она поможет.)»"
+          effects: { set_flags: [diploma_quest_done, diploma_process_started, knows_diploma_contact], faction: {ukrainian_volunteers: 5} }
+          deltas: { L: 2 }
+          skill_xp: { byurokratiya: 4 }
+          leads_to: "сеть ускоряет процессы"
+    - id: give_up_for_now
+      match: { verbs: [refuse, rest] }
+      outcomes:
+        - on: always
+          text: "Потом. Не сейчас. Слишком много всего сразу. Ты убираешь список в сумку."
+          effects: { set_flags: [diploma_quest_done] }
+          deltas: { P: 1 }
+          leads_to: "диплом не открыт; работа «не по специальности» надолго"
+  fallback: { text: "Мюллер держит список наготове.", reopen: true }
+
+# ---------- ДЕНЬ 35: N8 — зеркало-новичок ----------
+- id: voyna_node_newcomer_mirror
+  title: "Новенька у Оксаны"
+  category: dilemma
+  act: 2
+  node: N8
+  priority: 52
+  once: true
+  trigger: scheduled
+  day: 35
+  entry: { all: [ {any_flag: [oksana_community_joined, oksana_community_cautious]}, {flag_not: voyna_n8_done} ] }
+  stakes: low
+  location: plattenbau_flat
+  targets: [npc_oksana]
+  facts:
+    - "На встрече у Оксаны появляется Катя — три дня как приехала из Запорожья. Муж там. Дочь 5 лет."
+    - "Смотрит на тебя — как ты смотрела на других месяц назад."
+    - "Оксана тихо: «Поговори з нею. Ти вже знаєш більше, ніж думаєш. (Поговори с ней. Ты уже знаешь больше, чем думаешь.)»"
+  intro: "КАТЯ: «Вибачте... ви вже давно тут? Як ви взагалі... почали? (Извините... вы уже давно здесь? Как вы вообще... начали?)»"
+  branches:
+    - id: help_with_warmth
+      match: { verbs: [offer_help, talk, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь ей про Jobcenter, про школу, про чат. И про то, что первые недели — это просто выжить, и это нормально. Катя слушает так, как ты слушала бы. Оксана кивает через стол."
+          effects: { set_flags: [voyna_n8_done, mirror_helped_newcomer], faction: {ukrainian_volunteers: 8} }
+          deltas: { A: 3 }
+          leads_to: "красит финал: круг замкнулся; Оксана-типаж передаётся дальше"
+    - id: give_practical_info
+      match: { verbs: [talk, give], tone: [neutral, cold] }
+      outcomes:
+        - on: always
+          text: "Адреса, сайты, номера. Ты даёшь список — без лишних слов. Катя записывает. Это тоже помощь."
+          effects: { set_flags: [voyna_n8_done, mirror_practical] }
+          deltas: { A: 1 }
+          leads_to: "практичная передача знаний"
+    - id: too_much
+      match: { verbs: [refuse, rest] }
+      outcomes:
+        - on: always
+          text: "«Простіть, у мене зараз не виходить. (Простите, у меня сейчас не получается.)» Ты уходишь раньше. Оксана понимает — ты тоже ещё в процессе."
+          effects: { set_flags: [voyna_n8_done, mirror_couldnt] }
+          deltas: { P: 1 }
+          leads_to: "не хватило сил; это честно"
+  fallback: { text: "Катя смотрит и ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 45: немецкий ----------
+- id: voyna_german_class
+  title: "Інтеграційний курс"
+  category: arc
+  act: 2
+  priority: 48
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 4
+  entry: { all: [ {flag: voyna_arrived} ] }
+  stakes: low
+  location: buergeramt
+  facts:
+    - "Интеграционный курс — право и возможность по §24. 600 часов немецкого + ориентационный модуль. Бесплатно."
+    - "В группе: сирийки, грузинка, две украинки. Учительница — терпеливая немка."
+  intro: "«Guten Morgen, meine Damen und Herren. Wir beginnen von vorne. (Доброе утро, дамы и господа. Начинаем с начала.)»"
+  branches:
+    - id: attend
+      match: { verbs: [work, apply, observe] }
+      outcomes:
+        - on: always
+          text: "Падежи, предлоги, уродливые слова, которые потом вдруг понимаешь в магазине. Медленно. Работает."
+          effects: { skill_xp: {deutsch: 10}, fatigue: 8 }
+          deltas: { L: 1 }
+          leads_to: "Deutsch растёт; открываются официальные пути"
+    - id: talk_classmates
+      match: { verbs: [befriend, talk] }
+      outcomes:
+        - on: always
+          text: "Перерыв: кофе из термоса, разговор с Хадиджой из Дамаска. У неё трое детей, муж тоже не здесь. «Каждый день — маленькая победа», — говорит она по-немецки, плохо, но говорит."
+          effects: { skill_xp: {deutsch: 6}, stress: -6, faction: {neighbors: 3} }
+          deltas: { A: 1 }
+  fallback: { text: "Учебник открыт.", reopen: true }
+
+# ---------- ДЕНЬ 50: N7 — серый вариант (маловероятный) ----------
+- id: voyna_node_gray_option
+  title: "Предложение"
+  category: dilemma
+  act: 2
+  node: N7
+  priority: 58
+  once: true
+  trigger: pool
+  weight: 0.7
+  entry: { all: [ {money_lt: 200}, {flag_not: buergereld_applied}, {leaning_gte: {bubble: 2}}, {flag_not: voyna_n7_done} ] }
+  stakes: high
+  location: russian_shop
+  targets: [npc_irina_sosedka]
+  facts:
+    - "Ирина знает человека, который «помогает с бумагами». За деньги — или услугу."
+    - "Не совсем легально. Но быстро."
+    - "Это редкий путь для тех, кто закрылся от сети и не оформил пособие."
+  intro: "ИРИНА: «Слушай, я знаю одного человека. Он помогает. Быстро. Ну, не совсем официально. Но работает.»"
+  branches:
+    - id: accept_gray
+      match: { verbs: [ask_help, apply], honesty: [half_truth] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься. Бумаги есть. Деньги потом. Немного тревожно, но жить как-то надо."
+          effects: { set_flags: [voyna_n7_done, gray_papers_route], leaning: {gray: 2} }
+          deltas: { L: -3, T: -2 }
+          leads_to: "серая стабильность возможна; ending_gray усиливается"
+    - id: refuse_gray
+      match: { verbs: [refuse] }
+      outcomes:
+        - on: always
+          text: "«Спасибо, Ирина. Разберусь официально.» Идёшь в Jobcenter."
+          effects: { set_flags: [voyna_n7_done], leaning: {legal: 1} }
+          deltas: { P: 2, L: 1 }
+          leads_to: "остаёшься на белом пути"
+  fallback: { text: "Ирина ждёт ответа.", reopen: true }
+
+# === АКТ III (дни 61–90) ===
+# ---------- ДЕНЬ 62: встреча с Андрієм о возвращении ----------
+- id: voyna_andriy_return_question
+  title: "Андрій: «А ти?»"
+  category: arc
+  act: 3
+  priority: 70
+  once: true
+  trigger: scheduled
+  day: 62
+  entry: { all: [ {flag: knows_andriy}, {flag_not: andriy_return_done} ] }
+  stakes: medium
+  location: hasenheide_park
+  targets: [npc_andriy]
+  facts:
+    - "Андрій говорит: он возвращается. Не потому что надо — потому что не может больше здесь."
+    - "«Може, це неправильно. Але я там хочу бути, навіть якщо страшно. (Может, это неправильно. Но я хочу быть там, даже если страшно.)»"
+    - "И смотрит на тебя: «А ти?»"
+  intro: "АНДРІЙ: «Я вирішив. Повертаюсь у вересні. (Я решил. Возвращаюсь в сентябре.)»"
+  branches:
+    - id: understand
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Розумію», — говоришь ты. И это правда. И его выбор, и твой вопрос к себе — оба честные. «А ти так і не вирішила?» — «Поки ні.»"
+          effects: { set_flags: [andriy_return_done, andriy_chose_return] }
+          deltas: { T: 1 }
+          leads_to: "зеркало сформулировало вопрос; N9 — ответ"
+    - id: try_convince_stay
+      match: { verbs: [persuade, talk] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь: там опасно, здесь есть будущее. Андрій слушает. «Можливо. Але це моє рішення. (Возможно. Но это моё решение.)» — «Так», — соглашаешься ты."
+          effects: { set_flags: [andriy_return_done, andriy_chose_return] }
+          leads_to: "каждый выбирает сам"
+  fallback: { text: "Андрій смотрит на тебя и ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 68: возможность нормальной работы ----------
+- id: voyna_work_opportunity
+  title: "Вакансия от Оксаны"
+  category: arc
+  act: 3
+  priority: 65
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_oksana}, {any_flag: [diploma_process_started, works_cafe]}, {flag_not: real_job_offer_done} ] }
+  stakes: high
+  location: jobcenter
+  targets: [npc_oksana, npc_jobcenter_berater]
+  facts:
+    - "Через Оксану: немецкая бухгалтерская фирма берёт помощника-бухгалтера на испытательный срок. Немецкий B1 желателен, Deutsch 40+ хватит при хорошем CV."
+    - "Зарплата: 2200 € брутто — не сравнить с кафе. Это почти нормальная жизнь."
+    - "Нужно: CV на немецком, мотивационное письмо, собеседование."
+  intro: "ОКСАНА: «Слухай, є вакансія. Справжня. Для тебе. Треба спробувати. (Слушай, есть вакансия. Настоящая. Для тебя. Надо попробовать.)»"
+  branches:
+    - id: apply_for_real_job
+      match: { verbs: [apply, submit_docs, work] }
+      outcomes:
+        - on: always
+          text: "Ты пишешь CV. Оксана проверяет немецкий, волонтёр-юрист проверяет статус. Собеседование назначено. Готовишься вечерами, пока Соня спит."
+          effects: { set_flags: [real_job_offer_done, applying_real_job] }
+          deltas: { P: 2, L: 2 }
+          skill_xp: { deutsch: 8, byurokratiya: 4 }
+          leads_to: "N9 — если нанята: ending_legal; работа по специальности как якорь"
+    - id: doubt
+      match: { verbs: [refuse, talk], tone: [submissive, neutral] }
+      outcomes:
+        - on: always
+          text: "«Я не готова. Мій німецький... (Мой немецкий...)» Оксана: «Спробуй. Відмовлять — нічого. Погодяться — все міняється. (Попробуй. Откажут — ничего. Согласятся — всё меняется.)» Ты думаешь."
+          effects: { set_flags: [real_job_offer_done] }
+          deltas: { P: -1 }
+          leads_to: "шанс упущен; возможно появится второй — или не появится"
+  fallback: { text: "Оксана держит распечатку вакансии.", reopen: true }
+
+# ---------- ДЕНЬ 75: звонок домой — Сергій ----------
+- id: voyna_sergiy_call_act3
+  title: "Сергій: «Як ви там?»"
+  category: arc
+  act: 3
+  priority: 60
+  once: true
+  trigger: scheduled
+  day: 75
+  entry: { all: [ {flag_not: sergiy_act3_call_done} ] }
+  stakes: high
+  location: plattenbau_flat
+  facts:
+    - "Сергій звонит сам — неожиданно. Голос чуть теплее, чем обычно."
+    - "«Як ви там? Соня як?» Он хочет знать про Берлин."
+    - "Ты не знаешь, говорить ли правду: что начинаешь привыкать, что Берлин начинает казаться менее чужим."
+  intro: "СЕРГІЙ: «Привіт. Розкажи мені про Берлін. Що там взагалі? (Привет. Расскажи мне про Берлин. Что там вообще?)»"
+  branches:
+    - id: tell_truth_adapting
+      match: { verbs: [talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Ми звикаємо. Трохи. Соня вже розуміє по-німецьки. Я теж. Це... страшно, насправді.» Пауза. «Чому страшно?» — «Бо це означає, що ми залишаємось.» Он молчит долго. «Це не погано», — наконец."
+          effects: { set_flags: [sergiy_act3_call_done, told_sergiy_adapting] }
+          deltas: { T: 2 }
+          leads_to: "честный разговор; N9 — возвращение или остаться без лжи"
+    - id: reassure_coming_back
+      match: { verbs: [talk, deceive], honesty: [half_truth] }
+      outcomes:
+        - on: always
+          text: "«Всё нормально. Ждём, когда вернёмся. Соня спрашивает про папу каждый день.» — «Скоро», — говорит он. Вы оба знаете, что «скоро» — это слово без смысла сейчас."
+          effects: { set_flags: [sergiy_act3_call_done, half_truth_sergiy] }
+          deltas: { T: -1 }
+          leads_to: "полуправда держит; но N9 — вопрос без ответа"
+  fallback: { text: "Сергій ждёт.", reopen: true }
+
+# ---------- N9: «Що далі?» — развязка ----------
+- id: voyna_node_resolution
+  title: "Що далі?"
+  category: dilemma
+  act: 3
+  node: N9
+  priority: 95
+  once: true
+  trigger: scheduled
+  day: 85
+  entry: { all: [] }
+  stakes: extreme
+  location: plattenbau_flat
+  targets: [npc_oksana]
+  facts:
+    - "Хозяева возвращаются через месяц. Надо решить: остаться в Берлине и искать постоянное жильё, вернуться домой, или продолжать в «временном» режиме."
+    - "§24 продлевается — статус пока есть. Но это решение нельзя откладывать вечно."
+    - "Соня говорит по-немецки с акцентом, которого у тебя нет. Она уже здесь."
+  intro: "Оксана пришла с чаем. «Ну що — думала? Що далі? (Ну что — думала? Что дальше?)» Не давит. Просто спрашивает."
+  branches:
+    # Порядок важен: первый подходящий по requires = концовка
+    - id: deport
+      match: { verbs: [observe, talk, rest, submit_docs, inquire_status, apply, refuse] }
+      requires: [ {flag: gray_papers_route}, {leaning_gte: {gray: 4}} ]
+      outcomes:
+        - on: always
+          text: "Серые бумаги дали трещину — проверка выявила несоответствие. Статус отозван. Выезд в течение месяца. Ты пакуешь вещи — снова. Соня плачет. Ты объясняешь ей что-то, в чём сама не уверена. Это не конец истории — это конец этой главы. (КОНЦОВКА: депортация/крах)"
+          effects: { set_flags: [ending_deport, game_over] }
+          leads_to: "ending_deport"
+    - id: ending_legal
+      match: { verbs: [apply, submit_docs, work, talk, offer_help] }
+      requires: [ {any_flag: [applying_real_job, diploma_process_started]}, {flag: oksana_community_joined}, {skill_gte: {deutsch: 35}} ]
+      outcomes:
+        - on: always
+          text: "Ты получила место в бухгалтерской фирме — или первый шаг к признанию диплома оказался не последним. Соня в школе, ты в работе. Квартиру нашла через чат. Берлин больше не совсем чужой. Дома — война. Сергій — там. Это всё ещё болит. Но ты здесь — не потому что не можешь уехать, а потому что решила. (КОНЦОВКА: укоренение)"
+          effects: { set_flags: [ending_legal, game_over] }
+          deltas: { P: 2 }
+          leads_to: "ending_legal"
+    - id: ending_exit
+      match: { verbs: [move, talk, refuse, rest] }
+      requires: [ {flag: told_sergiy_adapting}, {flag: andriy_chose_return} ]
+      outcomes:
+        - on: always
+          text: "Ты покупаешь билет. Не потому что Берлин плохой. И не потому что проиграла. Потому что Сергій там, потому что дом — это он и твой город, пока они ещё есть. Соня прощается с учительницей по-немецки. «Auf Wiedersehen», — говорит она. Может, до свидания. Может, навсегда. (КОНЦОВКА: возвращение)"
+          effects: { set_flags: [ending_exit, game_over] }
+          deltas: { P: 2 }
+          leads_to: "ending_exit — НЕ поражение, это выбор"
+    - id: ending_underground
+      match: { verbs: [hide, flee, observe, rest] }
+      requires: [ {flag: gray_papers_route}, {leaning_gte: {gray: 3}} ]
+      outcomes:
+        - on: always
+          text: "Статус истёк тихо. Ты нашла способ оставаться — серые бумаги, серые схемы. Живёшь. Работаешь вчёрную. Соня в школе на чужой фамилии. Каждый день — держать. Это не жизнь, которую ты хотела. Но ты выжила, и это что-то значит. (КОНЦОВКА: серое подполье)"
+          effects: { set_flags: [ending_underground, game_over] }
+          leads_to: "ending_underground"
+    - id: ending_gray
+      match: { verbs: [rest, observe, talk] }
+      requires: [ {flag: buergereld_applied} ]
+      outcomes:
+        - on: always
+          text: "Статус продлён. Пособие идёт. Соня в школе. Ты живёшь — но ещё «временно». Год. Потом ещё год. «Это временно» стало образом жизни. Ни здесь, ни там. Берлин знаком, но не свой. Дома — далеко. Зависание длится. (КОНЦОВКА: серое зависание)"
+          effects: { set_flags: [ending_gray, game_over] }
+          leads_to: "ending_gray"
+    - id: ending_gray_default
+      match: { verbs: [observe, talk, rest, submit_docs, inquire_status, apply, move, refuse] }
+      outcomes:
+        - on: always
+          text: "Ничего не решилось окончательно. Статус есть — на год ещё. Ты в середине: и не уезжаешь, и не укореняешься. «Подивимось», — говоришь ты Оксані. Она кивает: она знает это состояние. (КОНЦОВКА: серое зависание)"
+          effects: { set_flags: [ending_gray, game_over] }
+          leads_to: "ending_gray"
+  fallback: { text: "Оксана ждёт. Чай стынет.", reopen: true }

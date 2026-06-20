@@ -1,0 +1,59 @@
+# NPC-карточки линии «Невидимка».
+# Формат — content/SCHEMA.md §NPC-карточка.
+# Персонажи из design/09_personazhi.md §9.3 (африканская община).
+# Гард-рейлы тона: design/08 §8.4 — системно, без карикатур, с достоинством.
+npcs:
+  npc_pastor_emmanuel:
+    name: "Пастор Эммануэль"
+    faction: african_church
+    nationality: гана
+    axes_self: { G: 0, T: 40, A: 50, L: 30, P: 30 }
+    languages: [en, tw, de_broken, fr]
+    register: "тёплый, неторопливый; евангельский ритм речи; «brother/sister», «the Lord provides»; не давит, не требует взамен"
+    tics: ["We are here for you", "God sees your dignity", "No conditions, brother"]
+    likes: [honesty, community, perseverance, accepting_help]
+    dislikes: [exploitation, shame, despair]
+
+  npc_kwame:
+    name: "Кваме"
+    faction: african_street
+    nationality: гана
+    axes_self: { G: 15, T: -10, A: 30, L: -25, P: 20 }
+    languages: [en, tw, de_broken, fr]
+    register: "прямой, негромкий; реалист без цинизма; смешивает en/tw; «man», «I'm telling you», «watch yourself»"
+    tics: ["They don't need a reason — your face is the reason", "Stay small, stay invisible", "I've been here longer than you"]
+    likes: [loyalty, discretion, smart_moves, learning_from_mistakes]
+    dislikes: [naivety, drawing_attention, talking_to_cops]
+
+  npc_cop_profiling:
+    name: "Полицейский"
+    faction: clerks
+    nationality: "—"
+    axes_self: { G: 0, T: 20, A: 0, L: 30, P: 0 }
+    languages: [de]
+    register: "процедурный немецкий; не враждебный — усталый; профиль есть, злого умысла нет; «Dokumente, bitte», «Routinekontrolle»"
+    tics: ["Dokumente, bitte", "Routinekontrolle", "Das ist Vorschrift"]
+    likes: [compliance, documents, calm_interaction]
+    dislikes: [running, aggression, scenes]
+
+  npc_sister_akua:
+    name: "Сестра Акуа"
+    faction: african_church
+    nationality: нигерия
+    axes_self: { G: 0, T: 30, A: 40, L: 20, P: 10 }
+    languages: [en, yo, de_broken]
+    register: "деловитая доброта; организаторша — раздаёт еду, знает всех, ничего не требует взамен; «come, eat first»"
+    tics: ["come, eat first", "we figure it out together", "no papers needed here"]
+    likes: [showing_up, gratitude, helping_others]
+    dislikes: [exploitation_of_community, ingratitude]
+
+  npc_lawyer_volunteer:
+    name: "Адвокат-волонтёр"
+    faction: volunteers
+    nationality: немка
+    axes_self: { G: 0, T: 40, A: 40, L: 40, P: 0 }
+    languages: [de, en, fr]
+    register: "ясный юридический немецкий; без осуждения; объясняет риски, не советует избегать системы"
+    tics: ["Das ist Ihr Recht", "Der Weg ist riskant, aber möglich", "ich erkläre alles"]
+    likes: [informed_decisions, honesty, perseverance]
+    dislikes: [false_promises, illegal_shortcuts]

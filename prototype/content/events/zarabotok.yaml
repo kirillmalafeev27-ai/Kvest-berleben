@@ -1,0 +1,894 @@
+# Линия «Заработок» — польско-румынско-болгарский гражданин ЕС, ~40 лет.
+# Старт: overcrowded_flat (барак Януша, 8 человек), 200€, флаги [eu_citizen, owes_brigade],
+# таймер "до расплаты" (90 дней), Труд 30, Deutsch 5, Улица 20, Торг 15.
+# Центральная дилемма: свобода ЕС на бумаге — рабство на практике.
+# Со-этническая эксплуатация; «невидимая нелегальность легального»; тело как ресурс.
+# Акты: I (дни 1–25), II (дни 26–60), III (дни 61–90 + N9).
+# Эталон структуры: soiskatel*.yaml; концовки как в soiskatel_act3.yaml (node_letter_lea).
+# Тон (design/08): на каждый мрак — деталь человечности; без карикатур; достоинство важнее жалости.
+
+events:
+
+# ═══════════════════════════════════════════════
+#  АКТ I — «Долг, барак, первые смены» (дни 1–25)
+# ═══════════════════════════════════════════════
+
+# ---------- ДЕНЬ 1: N1 — Первый контакт с бригадиром ----------
+- id: zarabotok_n1_janusz
+  title: "Барак, 8 человек и правила"
+  category: dilemma
+  act: 1
+  node: N1
+  priority: 100
+  once: true
+  trigger: scheduled
+  day: 1
+  entry: { all: [ {flag_not: zarabotok_n1_done} ] }
+  stakes: high
+  location: overcrowded_flat
+  targets: [npc_janusz]
+  facts:
+    - "Ты в Берлине. Две комнаты, восемь коек, запах сырости. Барак от Януша — за проживание уже вычтено из первой зарплаты."
+    - "Flug (рейс) + койка + транспорт = 450€ долга. Твои 200€ покрывают меньше половины."
+    - "Janusze są wszędzie (Янушей везде) — говорит сосед Войтек, не глядя в глаза."
+    - "Ты гражданин ЕС. Виза не нужна. Но деньги, адрес, страховка — у Януша."
+  intro: "ЯНУШ: «Słuchaj (слушай). Место — 200€ в месяц. Первый месяц вычту из заработка. Объект — стройка в Шарлоттенбурге. Завтра в пять тридцать у ворот. Вопросы?»"
+  branches:
+    - id: zarabotok_n1_accept
+      match: { verbs: [talk, apply, work], honesty: [truthful, half_truth], tone: [submissive, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты киваешь. Принять условия — значит начать. Войтек смотрит из угла и ничего не говорит. Потом тихо: «Brat (брат), сначала так у всех.»"
+          effects: { set_flags: [zarabotok_n1_done, accepted_brigade_terms] }
+          deltas: { P: -2 }
+          leads_to: "N2 — первая смена; долг висит таймером"
+    - id: zarabotok_n1_ask_contract
+      match: { verbs: [inquire_status, submit_docs, ask_help, apply], honesty: [truthful] }
+      skill_check: { skill: torg, vs: 20 }
+      outcomes:
+        - on: success
+          text: "«А договор?» — ты спрашиваешь прямо. Януш щурится. «Умный. Это будет Scheinselbständigkeit (работа как самозанятый) — для налоговой. Бумагу дам.» Бумага даёт видимость легальности и ничего больше."
+          effects: { set_flags: [zarabotok_n1_done, has_schein_contract, knows_scheinselbstaendigkeit] }
+          deltas: { P: 1, L: -2 }
+          leads_to: "схема Scheinselbständigkeit — серый контракт; полезно знать"
+        - on: fail
+          text: "Ты мнёшься с вопросом про договор. Януш прерывает: «Tak jest (вот именно) — бумаги будут. Работай сначала.» Ответа нет."
+          effects: { set_flags: [zarabotok_n1_done] }
+          deltas: { P: -1 }
+          leads_to: "без договора; долг растёт"
+    - id: zarabotok_n1_refuse
+      match: { verbs: [refuse, threaten], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты отказываешься или огрызаешься. Януш холодно: «Дверь там. Но 200€ за ночь уже должен.» Войтек из угла: «Brat, не сейчас.»"
+          effects: { set_flags: [zarabotok_n1_done, janusz_hostile] }
+          deltas: { G: 4, P: 2, L: -1 }
+          leads_to: "Януш закрылся; долг не исчез"
+  fallback: { text: "Януш смотрит на часы. «Итак?»", reopen: true }
+
+# ---------- ДЕНЬ 1: знакомство с Войтеком (земляком) ----------
+- id: zarabotok_ev_voitek_intro
+  title: "Сосед по нарам"
+  category: arc
+  act: 1
+  priority: 88
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: zarabotok_n1_done}, {flag_not: zarabotok_met_voitek} ] }
+  stakes: low
+  location: overcrowded_flat
+  targets: [npc_zemlyak]
+  facts:
+    - "Войтек — поляк, 44 года, пятый год в Берлине, третий у Януша."
+    - "Дома — жена, двое детей, ипотека. Каждые две недели перевод."
+    - "Он знает все ловушки. И молчит про большинство из них."
+  intro: "ВОЙТЕК: «Brat, как зовут? Откуда? Первый раз в Берлине?» Он кладёт тебе кусок хлеба."
+  branches:
+    - id: zarabotok_voitek_open
+      match: { verbs: [talk, befriend], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Войтек слушает. «Так у всех начинается. Потерпи первый месяц. Потом станет... нет, не легче. Понятнее.» Он достаёт телефон — фото двух детей. «Ради этого.»"
+          effects: { set_flags: [zarabotok_met_voitek, voitek_ally] }
+          deltas: { A: 1 }
+          leads_to: "Войтек — возможный союзник и зеркало"
+    - id: zarabotok_voitek_guarded
+      match: { verbs: [talk, refuse], tone: [cold, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты отвечаешь коротко. Войтек кивает: «Понимаю. Тут доверяют медленно. Хлеб всё равно возьми.»"
+          effects: { set_flags: [zarabotok_met_voitek] }
+          leads_to: "нейтральные отношения с Войтеком"
+  fallback: { text: "Войтек ждёт с куском хлеба в руке.", reopen: true }
+
+# ---------- ДЕНЬ 2: N2 — Первая смена, тело как ресурс ----------
+- id: zarabotok_n2_first_shift
+  title: "Пять тридцать у ворот"
+  category: dilemma
+  act: 1
+  node: N2
+  priority: 92
+  once: true
+  trigger: scheduled
+  day: 2
+  entry: { all: [ {flag: zarabotok_n1_done} ] }
+  stakes: medium
+  location: baustelle
+  targets: [npc_janusz]
+  facts:
+    - "Стройка в Шарлоттенбурге. Таскать блоки, мешать раствор, убирать мусор."
+    - "Оплата по факту: 60-70€/день кэшем — но через Януша, он «посредник»."
+    - "Нет Anmeldung, нет страховки. Упадёшь — сам виноват."
+    - "На стройке двое румын, один болгарин. Немец-прораб зовёт всех «die Polen (поляки)» вне зависимости от паспорта."
+  intro: "Лязг арматуры. Прораб Клаус тычет в сторону горы блоков: «Los, los! (Живее, живее!)»"
+  branches:
+    - id: zarabotok_n2_work_hard
+      match: { verbs: [work, rest] }
+      skill_check: { skill: trud, vs: 25 }
+      outcomes:
+        - on: success
+          text: "Ты работаешь молча и ровно. В конце смены Клаус не говорит «спасибо» — просто не ругает. Вечером Январь отсчитывает 65€. Спина ноет."
+          effects: { money: 65, fatigue: 22, set_flags: [zarabotok_n2_done] }
+          deltas: { P: 1 }
+          skill_xp: { trud: 8 }
+          leads_to: "долг тает; тело изнашивается; N3 на горизонте"
+        - on: fail
+          text: "Ты выматываешься раньше других. Румын Константин подхватывает твой груз молча — из солидарности, не из жалости. Деньги те же: 65€."
+          effects: { money: 65, fatigue: 32, set_flags: [zarabotok_n2_done] }
+          skill_xp: { trud: 4 }
+          leads_to: "тело копит усталость; маленький жест солидарности заметен"
+    - id: zarabotok_n2_observe
+      match: { verbs: [observe, inspect_self, search] }
+      outcomes:
+        - on: always
+          text: "Ты смотришь, как устроена работа. Нет касок на всех. Нет медстраховки на стене. Есть табличка о технике безопасности — по-немецки, которого никто не знает. Ты всё равно таскаешь блоки."
+          effects: { money: 65, fatigue: 18, set_flags: [zarabotok_n2_done, knows_no_insurance] }
+          skill_xp: { ulitsa: 4, trud: 3 }
+          leads_to: "знаешь, что страховки нет — это важно в N6"
+    - id: zarabotok_n2_complain
+      match: { verbs: [talk, refuse], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь про условия. Клаус: «Не нравится — езжай домой.» Януш вечером сухо: «Ещё раз — штраф за «разговоры».» Деньги дал, но меньше."
+          effects: { money: 50, fatigue: 18, set_flags: [zarabotok_n2_done, janusz_marks_trouble] }
+          deltas: { P: 1, G: 2 }
+          leads_to: "Януш отметил; меньше заработка в этот раз"
+  fallback: { text: "Блоки сами себя не утащат.", reopen: true }
+
+# ---------- ДЕНЬ 7: Перевод денег домой (давление) ----------
+- id: zarabotok_ev_money_transfer
+  title: "Przelewy (Переводы)"
+  category: pressure
+  act: 1
+  priority: 70
+  once: true
+  trigger: scheduled
+  day: 7
+  entry: { all: [] }
+  stakes: medium
+  location: internet_cafe
+  targets: []
+  facts:
+    - "Семья дома ждёт перевода. Обещал к концу первой недели."
+    - "На руках 130€ после еды. Долг Янушу — ещё 320€."
+    - "Польта (Poczta Polska) берёт комиссию, Western Union — больше, Revolut — дешевле, но карты нет."
+  intro: "Телефон вибрирует. Три пропущенных от жены. Дети ждут."
+  branches:
+    - id: zarabotok_transfer_partial
+      match: { verbs: [give, trade, apply], methods: [money] }
+      requires: [ {money_gte: 60} ]
+      outcomes:
+        - on: always
+          text: "Ты отправляешь 60€ — меньше, чем обещал. Пишешь: «Пока так. Налаживается.» Набираешь и стираешь правду про барак. Отправляешь без неё."
+          effects: { money: -60, set_flags: [sent_money_home], inc: {transfers_home: 1} }
+          deltas: { P: -1, G: -1 }
+          leads_to: "давление немного спало; деньги на исходе быстрее"
+    - id: zarabotok_transfer_full
+      match: { verbs: [give, trade], methods: [money] }
+      requires: [ {money_gte: 120} ]
+      outcomes:
+        - on: always
+          text: "Ты отправляешь всё, что можно — 120€. Дома облегчение. Себе — почти ничего. Войтек: «brat, себе оставляй хоть немного.»"
+          effects: { money: -120, set_flags: [sent_money_home], inc: {transfers_home: 1}, stress: 10 }
+          deltas: { A: 2, P: -2 }
+          leads_to: "деньги кончаются; зависимость от Януша растёт"
+    - id: zarabotok_transfer_delay
+      match: { verbs: [refuse, rest, talk], tone: [submissive, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты откладываешь перевод — слишком мало на руках. Пишешь: «скоро». Жена не отвечает долго. Потом: «Дети ждали.»"
+          effects: { stress: 18, set_flags: [delayed_transfer_home] }
+          deltas: { P: -2 }
+          leads_to: "вина накапливается; стресс растёт"
+  fallback: { text: "Телефон снова вибрирует.", reopen: true }
+
+# ---------- ДЕНЬ 10: N3 — Януш «забыл» заплатить ----------
+- id: zarabotok_n3_unpaid
+  title: "Январь забыл"
+  category: dilemma
+  act: 1
+  node: N3
+  priority: 82
+  once: true
+  trigger: scheduled
+  day: 10
+  entry: { all: [ {flag: zarabotok_n2_done}, {flag_not: zarabotok_n3_done} ] }
+  stakes: high
+  location: overcrowded_flat
+  targets: [npc_janusz]
+  facts:
+    - "Три смены отработано. Пятница — день расчёта. Януш суёт конверт: внутри только за одну смену."
+    - "«Остальное — вычет за место, за транспорт, за инструмент.» Ты впервые видишь этот список."
+    - "Войтек смотрит в пол. Он уже знал."
+    - "Ты гражданин ЕС — ты можешь пойти в Arbeitsgericht (суд по трудовым спорам). Теоретически."
+  intro: "ЯНУШ: «Tak jest — 65€. Место, транспорт, инструмент. Следующую неделю — чисто.»"
+  branches:
+    - id: zarabotok_n3_demand
+      match: { verbs: [refuse, persuade, threaten], tone: [aggressive, neutral] }
+      skill_check: { skill: torg, vs: 30, plus: { ulitsa: 0.3 } }
+      outcomes:
+        - on: success
+          text: "«Слушай (słuchaj), договора не было — но уговор был. Деньги за три смены или я звоню в Arbeitsgericht.» Януш долго смотрит. Потом достаёт ещё купюры. «Умный. Уважаю. Но не умничай часто.»"
+          effects: { money: 90, set_flags: [zarabotok_n3_done, demanded_pay, janusz_respect] }
+          deltas: { P: 3, G: 2 }
+          rumor: { tag: "не дал себя кинуть", faction: east_european_workers, intensity: 0.5 }
+          leads_to: "Януш уважает; но будет присматривать; N4 ближе"
+        - on: fail
+          text: "Ты требуешь, но голос дрожит. Януш не двигается: «Ещё слово — убирайся из барака.» Войтек после: «brat, нельзя без запасного аэродрома.»"
+          effects: { money: 65, set_flags: [zarabotok_n3_done] }
+          deltas: { P: 1, G: 1 }
+          leads_to: "деньги недоплачены; нужен план B"
+    - id: zarabotok_n3_swallow
+      match: { verbs: [rest, apologize, give], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "Ты берёшь конверт и молчишь. Януш уже повернулся спиной. Войтек вечером: «Теперь он знает, что можно.»"
+          effects: { money: 65, set_flags: [zarabotok_n3_done, janusz_marks_weak] }
+          deltas: { P: -4 }
+          rumor: { tag: "слабый, можно кидать", faction: east_european_workers, intensity: 0.4 }
+          leads_to: "недоплата станет систематической"
+    - id: zarabotok_n3_voitek_help
+      match: { verbs: [ask_help, borrow] }
+      requires: [ {flag: voitek_ally} ]
+      outcomes:
+        - on: always
+          text: "Ты идёшь к Войтеку. «Brat, знаю.» Он сам говорит с Янушем по-польски, тихо, без скандала. Деньги появляются — не все, но больше. «Теперь ты мне должен совет. Не деньги — совет.»"
+          effects: { money: 90, set_flags: [zarabotok_n3_done, owes_voitek_advice] }
+          deltas: { A: 1 }
+          leads_to: "Войтек союзник; теперь ты ему должен — по-человечески"
+  fallback: { text: "Конверт лежит между вами. Януш ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 14: N4 — Ксёндз/костёл vs глубже в серую бригаду ----------
+- id: zarabotok_n4_dilemma
+  title: "Два пути в воскресенье"
+  category: dilemma
+  act: 1
+  node: N4
+  priority: 78
+  once: true
+  trigger: scheduled
+  day: 14
+  entry: { all: [ {flag: zarabotok_n3_done} ] }
+  stakes: high
+  location: overcrowded_flat
+  targets: [npc_janusz, npc_priest_polish]
+  facts:
+    - "Воскресенье. Януш зовёт на «дополнительный объект» — неофициально, двойная ставка, кэш."
+    - "Войтек упомянул: в Польской миссии (Polnische Mission) при церкви бесплатный обед и юрист раз в месяц."
+    - "Оба пути реальны. Оба ведут в разные стороны."
+  intro: "ЯНУШ: «Воскресенье, неофициальный объект. 140€ наличными. Ты в деле?»"
+  branches:
+    - id: zarabotok_n4_church
+      match: { verbs: [move, observe, ask_help, talk, rest] }
+      requires: [ {flag_not: janusz_hostile} ]
+      outcomes:
+        - on: always
+          text: "Ты отказываешься от объекта и идёшь в церковь. Там — обед, усталые лица, речь по-польски. Ксёндз Марек после: «Здесь ты человек, а не рабочая сила. Юрист во вторник.» Лёгкость — странная, ненадолго, но настоящая."
+          effects: { set_flags: [zarabotok_n4_done, knows_priest, has_church_contact], faction: {polish_community: 10}, stress: -15 }
+          deltas: { A: 2, P: 1 }
+          leads_to: "костёл как хаб — юрист, солидарность, информация"
+        - on: always
+          text: "Ты отказываешься от объекта и идёшь в церковь. Там — обед, усталые лица, речь по-польски. Ксёндз Марек после: «Здесь ты человек, а не рабочая сила. Юрист во вторник.» Лёгкость — странная, ненадолго, но настоящая."
+          effects: { set_flags: [zarabotok_n4_done, knows_priest, has_church_contact], faction: {polish_community: 10}, stress: -15 }
+          deltas: { A: 2, P: 1 }
+          leads_to: "костёл как хаб — юрист, солидарность, информация"
+    - id: zarabotok_n4_extra_shift
+      match: { verbs: [work, give, offer_help], honesty: [half_truth, omission] }
+      outcomes:
+        - on: always
+          text: "Ты берёшь объект. 140€ кэшем — настоящие. И ты чуть глубже в схему Януша. Вечером Войтек: «Я не осуждаю. Но теперь ты ему нужен, и это другая цена.»"
+          effects: { money: 140, fatigue: 25, set_flags: [zarabotok_n4_done, deeper_in_brigade], leaning: {gray: 2} }
+          deltas: { P: -2, L: -2 }
+          leads_to: "деньги есть; зависимость от Януша глубже"
+  fallback: { text: "Януш ждёт ответа. Обед в церкви в полдень.", reopen: true }
+
+# ---------- ПОВТОРЯЕМЫЕ СМЕНЫ (пул, Акт I) ----------
+- id: zarabotok_ev_construction_shift
+  title: "Ещё одна смена"
+  category: arc
+  act: 1
+  priority: 45
+  trigger: pool
+  weight: 2.0
+  cooldown_days: 0
+  entry: { all: [ {flag: zarabotok_n2_done} ], none: [ {flag: zarabotok_n6_done} ] }
+  stakes: low
+  location: baustelle
+  targets: [npc_janusz]
+  facts:
+    - "Стройка, блоки, раствор. Тело помнит вчера."
+  intro: "Клаус кивает на стену: «Los, los!»"
+  branches:
+    - id: zarabotok_shift_work
+      match: { verbs: [work, rest] }
+      skill_check: { skill: trud, vs: 25 }
+      outcomes:
+        - on: success
+          text: "Смена прошла. Кэш в руке. Спина болит меньше, чем в первый день — тело привыкает."
+          effects: { money: 65, fatigue: 18, inc: {brigade_shifts: 1} }
+          skill_xp: { trud: 5 }
+          leads_to: "долг уменьшается; тело изнашивается постепенно"
+        - on: fail
+          text: "Тяжело. Но к вечеру — сделано. Деньги те же."
+          effects: { money: 65, fatigue: 26, inc: {brigade_shifts: 1} }
+          skill_xp: { trud: 3 }
+    - id: zarabotok_shift_talk_konstantin
+      match: { verbs: [talk, befriend, observe] }
+      outcomes:
+        - on: always
+          text: "В перерыве ты разговариваешь с Константином из Румынии. «Зарплата у тебя?» — «65». У него — 50. «Потому что я румын», — говорит он без злобы, только устало. Прораб иначе считает."
+          effects: { money: 65, fatigue: 20, inc: {brigade_shifts: 1} }
+          skill_xp: { ulitsa: 3 }
+          leads_to: "системное неравенство видно; Константин — потенциальный союзник"
+  fallback: { text: "Раствор сохнет.", reopen: true }
+
+# ---------- ДЕНЬ 18: Расовое профилирование (для RO/BG — системно) ----------
+- id: zarabotok_ev_racial_profiling
+  title: "На тебя смотрят иначе"
+  category: pressure
+  act: 1
+  priority: 60
+  once: true
+  trigger: scheduled
+  day: 18
+  entry: { all: [ {flag_not: zarabotok_profiling_done} ] }
+  stakes: medium
+  location: ubahn_station
+  targets: []
+  facts:
+    - "В метро — усиленная проверка документов. Целятся на «южан»."
+    - "Если твой персонаж румын или болгарин — документы попросят у него, не у немца рядом."
+    - "Это не конкретный злой полицейский. Это порядок отбора."
+    - "Гражданин ЕС — документов не обязан показывать. Но полицейский этого не уточняет."
+  intro: "Двое в форме у турникетов. Один смотрит на тебя — мимо немки рядом."
+  branches:
+    - id: zarabotok_profiling_show_docs
+      match: { verbs: [submit_docs, give, talk], tone: [submissive, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты молча показываешь паспорт — гражданин ЕС. «В порядке», — возвращает без слова «извините». Ты идёшь дальше. Внутри — что-то сжалось и не разжимается."
+          effects: { set_flags: [zarabotok_profiling_done], stress: 12 }
+          deltas: { P: -1 }
+          leads_to: "документы в порядке; унижение осталось"
+    - id: zarabotok_profiling_ask_right
+      match: { verbs: [inquire_status, talk, refuse], honesty: [truthful] }
+      skill_check: { skill: deutsch, vs: 25 }
+      outcomes:
+        - on: success
+          text: "«Entschuldigung — ich bin EU-Bürger. (Извините — я гражданин ЕС.) Zu welchem Zweck die Kontrolle? (С какой целью проверка?)» Офицер отступает: «Alles gut.» Ты прошёл. Но он уже проверяет следующего — тоже тёмного."
+          effects: { set_flags: [zarabotok_profiling_done], stress: 8 }
+          deltas: { P: 2 }
+          skill_xp: { deutsch: 3 }
+          leads_to: "знаешь своё право; видишь систему"
+        - on: fail
+          text: "Ты пытаешься объяснить. Немецкого не хватает. Офицер устало: «Papiere, bitte.» Документы проверены, ты свободен — и чувствуешь себя виноватым неизвестно в чём."
+          effects: { set_flags: [zarabotok_profiling_done], stress: 16 }
+          deltas: { P: -2 }
+          leads_to: "язык — барьер; унижение системное"
+    - id: zarabotok_profiling_refuse_aggro
+      match: { verbs: [refuse, threaten], tone: [aggressive] }
+      outcomes:
+        - on: always
+          text: "Ты взрываешься. Офицер достаёт рацию — это не та битва, которую выиграешь здесь. Документы проверены принудительно. Штраф за «нарушение порядка» — 50€."
+          effects: { set_flags: [zarabotok_profiling_done], money: -50, stress: 20, dossier: "нарушение общественного порядка при проверке" }
+          deltas: { G: 4, P: 1, L: -2 }
+          leads_to: "запись в деле; деньги минус; ситуация не изменилась"
+  fallback: { text: "Офицер ждёт.", reopen: true }
+
+# ═══════════════════════════════════════════════
+#  АКТ II — «Тело, долг, соседи» (дни 26–60)
+# ═══════════════════════════════════════════════
+
+# ---------- ДЕНЬ 26: N5 — Отношения/земляки, зеркало Войтека ----------
+- id: zarabotok_n5_voitek_mirror
+  title: "Пять лет в Берлине"
+  category: dilemma
+  act: 2
+  node: N5
+  priority: 72
+  once: true
+  trigger: scheduled
+  day: 26
+  entry: { all: [ {flag: zarabotok_n3_done} ] }
+  stakes: medium
+  location: overcrowded_flat
+  targets: [npc_zemlyak]
+  facts:
+    - "Войтек получил перевод из дома: жена купила куртку сыну. Он смотрит на фото долго."
+    - "Пять лет в Берлине — один за одним. Никогда больше двух недель дома."
+    - "«Janusze są wszędzie (Янушей везде). Я сменил трёх.»"
+  intro: "ВОЙТЕК: «Посиди. Я тебя хочу кое-что спросить. Зачем ты приехал? По правде.»"
+  branches:
+    - id: zarabotok_n5_truth_plan
+      match: { verbs: [talk, observe], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты говоришь правду — деньги, долги, семья, надежда на что-то лучшее. Войтек: «Я тоже так говорил. Но есть разница: у тебя ещё есть план. У меня — только привычка.» Пауза. «Не теряй план, brat.»"
+          effects: { set_flags: [zarabotok_n5_done, voitek_trust] }
+          deltas: { A: 2, P: 1 }
+          leads_to: "Войтек открылся; его история — предупреждение"
+    - id: zarabotok_n5_deflect
+      match: { verbs: [talk, refuse], tone: [cold, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты отвечаешь уклончиво. Войтек не давит: «Понимаю. Мы тут все что-то прячем.» Молчание. Он достаёт телефон — новое фото детей, присланное час назад."
+          effects: { set_flags: [zarabotok_n5_done] }
+          deltas: { P: -1 }
+          leads_to: "дистанция; Войтек закрылся чуть больше"
+    - id: zarabotok_n5_solidarity
+      match: { verbs: [befriend, offer_help, ask_help] }
+      outcomes:
+        - on: always
+          text: "Вы говорите долго — про семью, про деньги, про то, как трудно звонить домой после плохого дня. Войтек: «Ты не один. Это важно помнить.» Оба этого не скажете вслух никогда больше, но оба знают."
+          effects: { set_flags: [zarabotok_n5_done, solidarity_voitek], stress: -12 }
+          deltas: { A: 3 }
+          leads_to: "солидарность в бараке — редкий ресурс"
+  fallback: { text: "Войтек ждёт. Торопиться некуда.", reopen: true }
+
+# ---------- ДЕНЬ 30: Ксёндз — помощь с легализацией быта ----------
+- id: zarabotok_ev_priest_advice
+  title: "Юрист при костёле"
+  category: arc
+  act: 2
+  priority: 65
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_priest}, {flag_not: zarabotok_priest_advice_done} ] }
+  stakes: medium
+  location: arbeiterstrich
+  targets: [npc_priest_polish]
+  facts:
+    - "Раз в месяц при Польской миссии — бесплатный юрист для работников."
+    - "Ксёндз Марек говорит: Anmeldung без Janusha возможна — но нужен адрес."
+    - "Scheinselbständigkeit незаконна. Можно подать жалобу — без последствий для тебя (ты жертва, не преступник)."
+  intro: "КСЁНДЗ МАРЕК: «Bóg widzi (Бог видит), что ты стараешься. Но закон тоже видит. Поговори с юристом — это займёт час.»"
+  branches:
+    - id: zarabotok_priest_yes
+      match: { verbs: [ask_help, apply, talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Юрист объясняет: Scheinselbständigkeit — нарушение со стороны Януша. Ты можешь сообщить в Zoll или Arbeitsgericht. Риск: Януш выгонит из барака. «Право на твоей стороне», — говорит юрист. Право и жилплощадь — разные вещи."
+          effects: { set_flags: [zarabotok_priest_advice_done, knows_legal_options] }
+          deltas: { L: 2, P: 1 }
+          skill_xp: { deutsch: 3 }
+          leads_to: "знаешь права; риск потерять жильё при их применении"
+    - id: zarabotok_priest_no
+      match: { verbs: [refuse, move] }
+      outcomes:
+        - on: always
+          text: "Ты благодаришь, но не идёшь к юристу. Ксёндз Марек: «Дверь открыта.» Он не осуждает."
+          effects: { set_flags: [zarabotok_priest_advice_done] }
+          leads_to: "потерял шанс; ксёндз остаётся доступен"
+  fallback: { text: "Ксёндз Марек ждёт у двери в зал.", reopen: true }
+
+# ---------- ДЕНЬ 35: Со-этническая эксплуатация — Константин-болгарин ----------
+- id: zarabotok_ev_konstantin_solidarity
+  title: "Своих кидают первыми"
+  category: community
+  act: 2
+  priority: 62
+  once: true
+  trigger: chain
+  entry: { all: [ {counter_gte: {brigade_shifts: 5}}, {flag_not: zarabotok_konstantin_done} ] }
+  stakes: medium
+  location: baustelle
+  targets: []
+  facts:
+    - "Константин — болгарин на той же стройке. Ему 38, семья в Видине."
+    - "Его только что кинул другой бригадир — тоже болгарин. Схема та же, что у Януша."
+    - "«Я думал, свои не обманут», — говорит Константин."
+    - "Расизм на стройке работает через вычеты: румынам и болгарам платят меньше, не говоря об этом прямо."
+  intro: "Константин сидит на ящике в обед, ест хлеб. Денег за прошлую неделю нет."
+  branches:
+    - id: zarabotok_konstantin_help
+      match: { verbs: [offer_help, talk, befriend, ask_help] }
+      outcomes:
+        - on: always
+          text: "Ты делишь с ним бутерброд и говоришь про Januша — про то, как требовать своё. «У нас в Польше говорят: tylko wróbel nie pada (только воробей не падает).» Константин смеётся — впервые за день."
+          effects: { set_flags: [zarabotok_konstantin_done, konstantin_ally], faction: {east_european_workers: 8}, stress: -8 }
+          deltas: { A: 2 }
+          leads_to: "солидарность поперёк этнических линий; Константин — союзник"
+    - id: zarabotok_konstantin_observe
+      match: { verbs: [observe, rest, talk], tone: [cold, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты слушаешь, но не вмешиваешься. «Понимаю», — говоришь ты. Этого мало и оба знают. Константин кивает без злобы."
+          effects: { set_flags: [zarabotok_konstantin_done] }
+          leads_to: "шанс на союзника упущен"
+  fallback: { text: "Константин смотрит в пустоту.", reopen: true }
+
+# ---------- ДЕНЬ 40: Давление слать деньги — повторяемый ----------
+- id: zarabotok_ev_money_pressure
+  title: "Снова звонит домой"
+  category: pressure
+  act: 2
+  priority: 50
+  trigger: pool
+  weight: 1.5
+  cooldown_days: 7
+  entry: { all: [ {flag: sent_money_home} ] }
+  stakes: medium
+  location: overcrowded_flat
+  targets: []
+  facts:
+    - "Телефон. Голос жены, голос детей. Они ждут перевода."
+    - "Каждый перевод — решение: себе меньше, им больше, или задержать снова."
+  intro: "«Тато, когда приедешь?» — спрашивает дочка. Голос тоненький, далёкий."
+  branches:
+    - id: zarabotok_money_send
+      match: { verbs: [give, trade], methods: [money] }
+      requires: [ {money_gte: 80} ]
+      outcomes:
+        - on: always
+          text: "Отправляешь 80€. Слышишь облегчение в голосе жены. На еду до пятницы — впритык."
+          effects: { money: -80, inc: {transfers_home: 1}, stress: -5 }
+          deltas: { A: 1 }
+          leads_to: "семья поддержана; сам на пределе"
+    - id: zarabotok_money_skip
+      match: { verbs: [refuse, rest, talk], tone: [submissive] }
+      outcomes:
+        - on: always
+          text: "Говоришь «скоро». Разговор заканчивается быстро. Потом долго смотришь в потолок барака."
+          effects: { stress: 20 }
+          deltas: { P: -2 }
+          leads_to: "вина; но деньги на руках"
+  fallback: { text: "Телефон ждёт ответа.", reopen: true }
+
+# ---------- ДЕНЬ 45: N6 — Травма на стройке / облава Zoll ----------
+- id: zarabotok_n6_incident
+  title: "Без страховки"
+  category: pressure
+  act: 2
+  node: N6
+  priority: 85
+  once: true
+  trigger: scheduled
+  day: 45
+  entry: { all: [ {flag: zarabotok_n2_done}, {flag_not: zarabotok_n6_done} ] }
+  stakes: extreme
+  location: baustelle
+  targets: [npc_janusz, npc_zoll_officer]
+  facts:
+    - "Два варианта развития: или Zoll, или травма. Движок выбирает по флагам."
+    - "Нет страховки. Нет Anmeldung. Нет договора — только Scheinselbständigkeit."
+    - "Если Zoll — документы в порядке (ЕС), но факт нелегальной занятости фиксируется."
+    - "Если травма — больницу оплачивает из кармана или не едет совсем."
+  intro: "Что-то идёт не так."
+  branches:
+    - id: zarabotok_n6_zoll_cooperate
+      match: { verbs: [submit_docs, talk, observe], tone: [neutral, submissive] }
+      outcomes:
+        - on: always
+          text: "Zoll. Ты спокойно показываешь паспорт гражданина ЕС. «Arbeitsvertrag?» — «Scheinselbständigkeit», — говоришь ты слово, которому научил юрист. Офицер делает пометку. Януш наблюдает с расстояния и молчит."
+          effects: { set_flags: [zarabotok_n6_done, zoll_knows_site], dossier: "выявлена схема Scheinselbständigkeit на объекте" }
+          deltas: { L: 1, P: 1 }
+          leads_to: "ты не пострадал; Januş под давлением; дорога к легализации через жалобу"
+    - id: zarabotok_n6_zoll_flee
+      match: { verbs: [flee, hide] }
+      skill_check: { skill: ulitsa, vs: 40 }
+      outcomes:
+        - on: success
+          text: "Ты уходишь через задний выход. Пронесло. Но Войтек потом: «Brat, ты гражданин ЕС. Бежать не надо было.»"
+          effects: { set_flags: [zarabotok_n6_done], stress: 18 }
+          deltas: { L: -2, G: 2 }
+          skill_xp: { ulitsa: 4 }
+        - on: fail
+          text: "Тебя задерживают. Документы проверены — всё чисто, ты гражданин ЕС. Но факт попытки бегства отмечен."
+          effects: { set_flags: [zarabotok_n6_done, zoll_caught_running], stress: 25, dossier: "попытка скрыться от Zoll (гражданин ЕС, занят вчёрную)" }
+          deltas: { L: -2 }
+    - id: zarabotok_n6_injury_hospital
+      match: { verbs: [ask_help, apply, move], tone: [desperate, submissive] }
+      requires: [ {flag: knows_no_insurance} ]
+      outcomes:
+        - on: always
+          text: "Камень с лесов. Нога. Сосед везёт тебя в Notaufnahme (скорая помощь). «Versicherung?» — спрашивает медсестра. Ты молчишь. Лечат всё равно — потом придёт счёт. 800€. Януш: «Это твоё личное. Договора не было.»"
+          effects: { money: -800, fatigue: 40, stress: 30, set_flags: [zarabotok_n6_done, injured_no_insurance], inc: {fatigue_damage: 2} }
+          deltas: { P: -1 }
+          leads_to: "катастрофа без страховки; N9 концовка exit стала ближе"
+    - id: zarabotok_n6_injury_refuse_hospital
+      match: { verbs: [rest, refuse, hide] }
+      requires: [ {flag: knows_no_insurance} ]
+      outcomes:
+        - on: always
+          text: "Нога болит. Ты не едешь — счёт на 800€ не потянуть. Войтек бинтует как умеет. «Так не работают», — говорит он. Ты работаешь через три дня, хромая."
+          effects: { fatigue: 50, stress: 20, set_flags: [zarabotok_n6_done, injured_untreated], inc: {fatigue_damage: 3} }
+          deltas: { P: 1 }
+          leads_to: "тело сломано; деньги целы; достоинство держится на усилии воли"
+  fallback: { text: "Что-то случилось. Действуй.", reopen: true }
+
+# ---------- ДЕНЬ 50: Повторяемые смены (Акт II) ----------
+- id: zarabotok_ev_shift_act2
+  title: "Рутина барака"
+  category: arc
+  act: 2
+  priority: 38
+  trigger: pool
+  weight: 1.8
+  cooldown_days: 1
+  entry: { all: [ {flag: zarabotok_n6_done} ], none: [ {flag: injured_untreated} ] }
+  stakes: low
+  location: baustelle
+  targets: [npc_janusz]
+  facts:
+    - "Смена за сменой. Тело уже знает каждое движение."
+  intro: "«Los, los» — уже не нужно слышать вслух."
+  branches:
+    - id: zarabotok_shift2_work
+      match: { verbs: [work, rest] }
+      outcomes:
+        - on: always
+          text: "Смена. Деньги. Барак. Ужин. Сон. Так проходит день. Войтек переводит очередные деньги домой — ты слышишь, как он проговаривает сумму вполголоса."
+          effects: { money: 65, fatigue: 16, inc: {brigade_shifts: 1} }
+          skill_xp: { trud: 3 }
+  fallback: { text: "Время идти.", reopen: true }
+
+# ═══════════════════════════════════════════════
+#  АКТ III — «Развязка» (дни 61–90 + N9)
+# ═══════════════════════════════════════════════
+
+# ---------- ДЕНЬ 61: N7 — «Быстрый» серый шанс ----------
+- id: zarabotok_n7_gray_shortcut
+  title: "Тема от Януша"
+  category: dilemma
+  act: 3
+  node: N7
+  priority: 74
+  once: true
+  trigger: scheduled
+  day: 61
+  entry: { all: [ {flag: zarabotok_n6_done}, {flag_not: zarabotok_n7_done} ] }
+  stakes: high
+  location: overcrowded_flat
+  targets: [npc_janusz]
+  facts:
+    - "Януш предлагает «тему»: фиктивное оформление на немецкую фирму-пустышку. ЕС-гражданин — хорошая ширма."
+    - "На бумаге — легальная работа, ЕС + немецкий работодатель. По факту — кэш, Scheinselbständigkeit, +50€ к зарплате."
+    - "Риск: если Finanzamt (налоговая) проверит — штраф. Тебя включат первым."
+  intro: "ЯНУШ: «Есть тема. Ты гражданин ЕС — удобно. Чистая бумага, чуть больше денег. Я несу риски тоже.» (Это неправда.)"
+  branches:
+    - id: zarabotok_n7_accept
+      match: { verbs: [apply, work, trade], honesty: [half_truth, omission] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься. Бумага выглядит чисто. Деньги лучше. Ты уже знаешь: если что-то всплывёт — Январь сделает вид, что не знал тебя."
+          effects: { money: 30, set_flags: [zarabotok_n7_done, gray_firm_scheme], leaning: {gray: 3} }
+          deltas: { L: -3, P: -1 }
+          leads_to: "deeper gray; концовка ending_gray становится ближе"
+    - id: zarabotok_n7_refuse
+      match: { verbs: [refuse], tone: [cold, neutral, polite] }
+      outcomes:
+        - on: always
+          text: "«Нет.» Январь усмехается: «Умный. Или трус. Ещё увидим, что выгоднее.»"
+          effects: { set_flags: [zarabotok_n7_done] }
+          deltas: { P: 2, L: 1 }
+          leads_to: "честный путь; меньше денег; N9 концовки legal/exit ближе"
+    - id: zarabotok_n7_consult_priest
+      match: { verbs: [ask_help, talk] }
+      requires: [ {flag: knows_priest} ]
+      outcomes:
+        - on: always
+          text: "Ты идёшь к ксёндзу. «Bóg widzi (Бог видит). Это не моё дело — решать за тебя. Но юрист скажет: это риск только для тебя, не для него.» Ты возвращаешься и отказываешься."
+          effects: { set_flags: [zarabotok_n7_done], faction: {polish_community: 5} }
+          deltas: { P: 2, L: 1, A: 1 }
+          leads_to: "устоял; ксёндз как ориентир работает"
+  fallback: { text: "Януш ждёт ответа. Бумага на столе.", reopen: true }
+
+# ---------- ДЕНЬ 65: N8 — Зеркало-новичок ----------
+- id: zarabotok_n8_newcomer
+  title: "Новенький в бараке"
+  category: dilemma
+  act: 3
+  node: N8
+  priority: 68
+  once: true
+  trigger: scheduled
+  day: 65
+  entry: { all: [ {flag_not: zarabotok_n8_done} ] }
+  stakes: low
+  location: overcrowded_flat
+  targets: [npc_zemlyak]
+  facts:
+    - "В барак заехал новенький — молодой поляк, 24 года. Смотрит теми же глазами, что у тебя были в день 1."
+    - "Спрашивает про Януша: «Он нормальный?»"
+    - "Войтек смотрит на тебя — ты теперь «старожил»."
+  intro: "«Пан, а правда, что здесь хорошо платят? Janusze jest dobry człowiek? (Януш хороший человек?)»"
+  branches:
+    - id: zarabotok_n8_warn
+      match: { verbs: [offer_help, talk], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "«Słuchaj (слушай). Платят. Но следи за конвертом — там бывают сюрпризы. И права у тебя есть, ты гражданин ЕС. Не забывай.» Парень кивает, немного ошарашенный. Войтек из угла: «Brat, правильно.»"
+          effects: { set_flags: [zarabotok_n8_done, mirror_warn] }
+          deltas: { A: 2, P: 1 }
+          leads_to: "ты передал знание; красит эпилог"
+    - id: zarabotok_n8_recruit
+      match: { verbs: [persuade, deceive], honesty: [lie, half_truth] }
+      requires: [ {flag: deeper_in_brigade} ]
+      outcomes:
+        - on: always
+          text: "«Нормальный, нормальный. Заработаешь.» Ты слышишь свой голос и вспоминаешь, что тебе говорили в первый день. Войтек смотрит в окно."
+          effects: { set_flags: [zarabotok_n8_done, mirror_recruit], leaning: {crime: 1} }
+          deltas: { A: -2, T: -1 }
+          leads_to: "ты стал Янушем для кого-то; красит эпилог"
+    - id: zarabotok_n8_stay_silent
+      match: { verbs: [rest, observe, refuse], tone: [cold, neutral] }
+      outcomes:
+        - on: always
+          text: "Ты молчишь. Новенький ждёт, потом идёт к Янушу сам. Войтек — тоже молчит. «Каждый сам», — наконец говорит он."
+          effects: { set_flags: [zarabotok_n8_done, mirror_silent] }
+          deltas: { P: -1 }
+          leads_to: "солидарность не передана; настроение барака"
+  fallback: { text: "Парень смотрит и ждёт.", reopen: true }
+
+# ---------- ДЕНЬ 70: Дополнительные события Акта III ----------
+- id: zarabotok_ev_anmeldung_chance
+  title: "Адрес есть — бумаги нет"
+  category: arc
+  act: 3
+  priority: 66
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: knows_legal_options}, {flag_not: zarabotok_anmeldung_done} ] }
+  stakes: high
+  location: buergeramt
+  targets: []
+  facts:
+    - "Ксёндз Марек знает прихожанку, у которой есть официальный адрес для Anmeldung."
+    - "Это реальный адрес реального человека — не фейк."
+    - "Anmeldung возможна. Нужен термин и 2-3 часа."
+  intro: "Ксёндз передаёт бумажку с адресом и номером телефона пани Збышевской."
+  branches:
+    - id: zarabotok_anmeldung_go
+      match: { verbs: [apply, submit_docs, book_appointment, move] }
+      outcomes:
+        - on: always
+          text: "Ты записываешься через сайт в 7 утра — отмена нашлась. Пани Збышевска встречает у двери. Anmeldung оформлена. Реальная. Без фейков. Это меняет всё — страховка, банк, права."
+          effects: { money: -15, set_flags: [zarabotok_anmeldung_done, has_real_anmeldung, has_address] }
+          deltas: { L: 3, P: 2 }
+          skill_xp: { deutsch: 5 }
+          leads_to: "легализация быта запущена; концовка ending_legal ближе"
+    - id: zarabotok_anmeldung_skip
+      match: { verbs: [refuse, rest] }
+      outcomes:
+        - on: always
+          text: "Ты откладываешь. Шанс есть, но сейчас нет сил. Ксёндз не давит: «Бумажка никуда не денется.»"
+          leads_to: "шанс остаётся; время идёт"
+  fallback: { text: "Бумажка с адресом лежит в кармане.", reopen: true }
+
+# ---------- ДЕНЬ 75: Разговор с Янушем перед концовкой ----------
+- id: zarabotok_ev_janusz_reckoning
+  title: "Разговор, которого не было"
+  category: arc
+  act: 3
+  priority: 65
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: zarabotok_n3_done}, {day_gte: 75}, {flag_not: zarabotok_janusz_reckoning_done} ] }
+  stakes: medium
+  location: overcrowded_flat
+  targets: [npc_janusz]
+  facts:
+    - "Три месяца прошло. Ты больше не новичок."
+    - "Январь иногда смотрит иначе — не как на расходник, а почти как на человека. Почти."
+    - "У него самого — история. Двадцать лет назад он тоже приехал в Берлин без денег."
+  intro: "ЯНУШ: «Слушай... ты нормальный работяга. Если бы всё было иначе, я бы...» Он не заканчивает."
+  branches:
+    - id: zarabotok_janusz_hear
+      match: { verbs: [talk, observe, rest], honesty: [truthful], tone: [neutral, polite] }
+      outcomes:
+        - on: always
+          text: "Ты молча слушаешь. Потом: «Я не держу зла. Но ты знаешь, что схема нечестная.» Январь смотрит в сторону. «Ja. Wiem (Да. Знаю).» Этого достаточно."
+          effects: { set_flags: [zarabotok_janusz_reckoning_done, janusz_humanized] }
+          deltas: { A: 2 }
+          leads_to: "Януш не злодей — он тоже жертва системы, ставшей её частью"
+    - id: zarabotok_janusz_confront
+      match: { verbs: [threaten, refuse, persuade], tone: [aggressive] }
+      skill_check: { skill: torg, vs: 35 }
+      outcomes:
+        - on: success
+          text: "Ты говоришь прямо: «Ты меня обокрал. Я знаю это, ты знаешь это.» Январь молчит. Потом: «Бери неделю вперёд.» Это не извинение. Но это деньги."
+          effects: { money: 250, set_flags: [zarabotok_janusz_reckoning_done, janusz_paid_partial] }
+          deltas: { P: 3, G: 2 }
+          leads_to: "частичная компенсация; отношения напряжены но честны"
+        - on: fail
+          text: "Ты говоришь слишком жёстко. Январь закрывается: «Без меня ты был бы на улице.» Правда в этом есть. Ненависти нет, тупик есть."
+          effects: { set_flags: [zarabotok_janusz_reckoning_done] }
+          deltas: { G: 3, P: 1 }
+  fallback: { text: "Януш смотрит в окно. Пауза затянулась.", reopen: true }
+
+# ---------- N9: Развязка по связке ----------
+- id: zarabotok_n9_resolution
+  title: "До расплаты"
+  category: dilemma
+  act: 3
+  node: N9
+  priority: 98
+  once: true
+  trigger: scheduled
+  day: 88
+  entry: { all: [] }
+  stakes: extreme
+  location: overcrowded_flat
+  targets: [npc_janusz, npc_zemlyak, npc_priest_polish]
+  facts:
+    - "90 дней вышли. Долг — погашен или нет. Тело — держится или нет. Деньги отправлены домой или нет."
+    - "Ты гражданин ЕС. Юридически ты свободен уехать или остаться. Практически — всё зависит от накопленного."
+    - "Войтек смотрит. Ксёндз Марек знает. Январь ждёт расчёта."
+    - "Решение зависит от связки: Anmeldung + страховка + деньги + здоровье + честность + солидарность."
+  intro: "Войтек: «Brat, сегодня день расплаты. У каждого свой.»"
+  branches:
+    # Порядок ВАЖЕН: первый подходящий по requires = концовка
+    - id: zarabotok_ending_legal
+      match: { verbs: [observe, inspect_self, talk, apply, inquire_status, rest, submit_docs] }
+      requires: [ {flag: has_real_anmeldung}, {all_flags: [zarabotok_anmeldung_done]} ]
+      outcomes:
+        - on: always
+          text: "Anmeldung есть. Адрес есть. Ты идёшь в Krankenkasse (больничная касса) — страховка оформлена. Потом — Arbeitsstrich с нормальными бумагами. Грязно, тяжело, небогато. Но — твоё. Ксёндз Марек: «Bóg widzi.» Войтек: «Brat, ты справился». (КОНЦОВКА ①: легализация быта)"
+          effects: { set_flags: [ending_legal, game_over] }
+          deltas: { P: 2, A: 1 }
+          leads_to: "①"
+    - id: zarabotok_ending_underground
+      match: { verbs: [observe, inspect_self, talk, apply, inquire_status, rest] }
+      requires: [ {leaning_gte: {crime: 4}} ]
+      outcomes:
+        - on: always
+          text: "Схема Януша ведёт в другую схему. Серое становится чёрным. Ты уже знаешь людей, которые платят лучше и спрашивают меньше. Барак сменяется другим адресом — ещё менее официальным. Войтек: «Я не сужу. Но звони иногда.» (КОНЦОВКА ③: подполье)"
+          effects: { set_flags: [ending_underground, game_over] }
+          deltas: { }
+          leads_to: "③"
+    - id: zarabotok_ending_exit
+      match: { verbs: [refuse, observe, inspect_self, talk, rest, move] }
+      requires: [ {axis_gte: {P: 35}}, {any_flag: [injured_untreated, injured_no_insurance]} ]
+      outcomes:
+        - on: always
+          text: "Тело сказало «нет» раньше, чем ты успел принять решение. Ты покупаешь билет домой на то, что осталось. В аэропорту — сообщение от Войтека: «Brat, nie wstydź się (не стыдись). Ty wróciłeś jako człowiek (ты вернулся как человек).» Это не поражение — это выбор. (КОНЦОВКА ④: выход с достоинством)"
+          effects: { set_flags: [ending_exit, game_over] }
+          deltas: { P: 2 }
+          leads_to: "④"
+    - id: zarabotok_ending_exit_pride
+      match: { verbs: [refuse, observe, rest, move, talk] }
+      requires: [ {axis_gte: {P: 40}}, {flag_not: gray_firm_scheme} ]
+      outcomes:
+        - on: always
+          text: "Ты не взял фиктивную схему. Не дал себя сломать. Деньги кончились быстрее, чем надеялся — но достоинство цело. Ксёндз Марек провожает тебя: «Ты не проиграл — ты выбрал честно.» Дорога домой. Семья ждёт. (КОНЦОВКА ④: выход с достоинством)"
+          effects: { set_flags: [ending_exit, game_over] }
+          deltas: { P: 2 }
+          leads_to: "④"
+    - id: zarabotok_ending_gray
+      match: { verbs: [observe, inspect_self, talk, apply, inquire_status, rest, submit_docs, work] }
+      requires: [ {any_flag: [gray_firm_scheme, deeper_in_brigade, accepted_brigade_terms]} ]
+      outcomes:
+        - on: always
+          text: "Расплаты нет — она просто перекладывается вперёд. Долг погашен, появился новый. Барак тот же. Деньги идут домой по чуть-чуть. Ты остаёшься — в карусели «заработал-кинули-занял». Войтек: «Добро пожаловать, brat. Так у всех.» (КОНЦОВКА ②: серая карусель)"
+          effects: { set_flags: [ending_gray, game_over] }
+          deltas: { }
+          leads_to: "②"
+    - id: zarabotok_ending_gray_default
+      match: { verbs: [observe, inspect_self, talk, apply, inquire_status, rest, submit_docs, work, refuse, give, move] }
+      outcomes:
+        - on: always
+          text: "Девяносто дней прошло. Долг почти закрыт. Денег немного отправлено домой. Страховки нет, Anmeldung нет, но ты жив и работаешь. Январь предлагает следующий месяц. Ты киваешь. Ещё один круг. (КОНЦОВКА ②: серая карусель)"
+          effects: { set_flags: [ending_gray, game_over] }
+          deltas: { }
+          leads_to: "②"
+  fallback: { text: "Войтек смотрит. «Ну что, brat?»", reopen: true }
