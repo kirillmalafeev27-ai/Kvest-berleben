@@ -1,0 +1,177 @@
+# Линия «Соискатель», Акт III (дни 61–90): схождение нитей + N9 + концовки.
+# Перенос design/story/04_akt3_sceny.md. Концовка выбирается на node_letter_lea по СВЯЗКЕ
+# накопленного состояния (ветки гейтятся `requires`, матчатся первым подходящим порядком).
+
+events:
+
+# ---------- платёж семени фрау Шмидт ----------
+- id: ev_schmidt_einliegerwohnung
+  title: "Комната наверху"
+  category: arc
+  act: 3
+  priority: 72
+  once: true
+  trigger: chain
+  entry: { all: [ {flag: helped_schmidt_selfless}, {day_gte: 60} ] }
+  stakes: medium
+  location: einliegerwohnung
+  targets: [npc_frau_schmidt]
+  facts:
+    - "Фрау Шмидт зовёт тебя наверх. У неё пустует Einliegerwohnung — квартирка мужа."
+    - "Ей нужен не квартирант, а человек, который не смотрит в телефон."
+  intro: "ФРАУ ШМИДТ: «У меня наверху пустует комната. Мне не нужен квартирант, junge Frau/junger Mann. Мне нужен... человек.»"
+  branches:
+    - id: accept_warm
+      match: { verbs: [offer_help, ask_help, talk, apologize], honesty: [truthful] }
+      outcomes:
+        - on: always
+          text: "Ты соглашаешься — по-человечески, без расчёта. Появляется адрес. А значит — путь к Anmeldung."
+          effects: { set_flags: [schmidt_room, has_address], faction: {neighbors: 10} }
+          deltas: { A: 2 }
+          leads_to: "адрес → Anmeldung → ① Blue Card (за то, что не считал выгоду)"
+    - id: decline
+      match: { verbs: [refuse] }
+      outcomes:
+        - on: always
+          text: "Ты вежливо отказываешься. Она кивает: «So. Понимаю.» Шанс уходит тихо."
+          deltas: { P: 1 }
+          leads_to: "жильё снова на тебе"
+  fallback: { text: "Фрау Шмидт ждёт ответа, держась за перила.", reopen: true }
+
+# ---------- контракт почти готов ----------
+- id: node_contract_almost
+  title: "Почти"
+  category: arc
+  act: 3
+  priority: 68
+  once: true
+  trigger: scheduled
+  day: 62
+  entry: { all: [ {flag: white_path_active} ] }
+  stakes: high
+  location: cafe_third_wave
+  targets: [npc_lena]
+  facts:
+    - "Через Лену пришёл оффер по специальности: Blue Card §18b реальна."
+    - "Не хватает только Anmeldung — нужен адрес и термин."
+  intro: "ЛЕНА: «Есть контракт. Зарплата выше порога. Осталось одно — Anmeldung. Без неё всё повиснет.»"
+  branches:
+    - id: take_legit
+      match: { verbs: [apply, submit_docs, work, ask_help, talk] }
+      outcomes:
+        - on: always
+          text: "Ты берёшься оформлять всё по-белому. Теперь гонка: получить Anmeldung до конца визы."
+          effects: { set_flags: [has_contract] }
+          deltas: { L: 1, T: 1 }
+          leads_to: "нужен адрес/термин → лайфхак Беккер или комната Шмидт → ① на N9"
+    - id: tempted_fake
+      match: { verbs: [trade, submit_docs], methods: [forged] }
+      requires: [ {flag_not: has_address} ]
+      outcomes:
+        - on: always
+          text: "Соблазн: купить Anmeldung у «Доктора» в последний момент. Быстро — и рискованно."
+          effects: { set_flags: [has_contract], leaning: {gray: 1} }
+          deltas: { L: -2, T: -1 }
+          leads_to: "если возьмёшь фейк — мина на N9"
+  fallback: { text: "Лена держит наготове бланки контракта.", reopen: true }
+
+# ---------- община скидывается на адвоката ----------
+- id: ev_community_lawyer
+  title: "Скинулись"
+  category: community
+  act: 3
+  priority: 60
+  once: true
+  trigger: chain
+  entry: { all: [ {day_gte: 60}, {faction_gte: {turkish: 18}} ] }
+  stakes: medium
+  location: mehmet_kebab
+  targets: [npc_mehmet]
+  facts:
+    - "Мехмет и община собрали денег на адвоката для твоего дела — потому что ты был свой."
+  intro: "МЕХМЕТ: «Мы тут посоветовались. Адвокат. Бесплатно. Для тебя. Я знал — с первого дня знал.»"
+  branches:
+    - id: accept
+      match: { verbs: [talk, ask_help, apologize, offer_help, give] }
+      outcomes:
+        - on: always
+          text: "Ты принимаешь помощь с благодарностью. Адвокат укрепит твоё дело на финале."
+          effects: { set_flags: [community_lawyer] }
+          deltas: { A: 1 }
+          leads_to: "плюс к устойчивости на N9"
+  fallback: { text: "Мехмет ждёт, вытирая руки о фартук.", reopen: true }
+
+# ---------- N9: письмо из LEA → концовка по связке ----------
+- id: node_letter_lea
+  title: "Письмо"
+  category: dilemma
+  act: 3
+  node: N9
+  priority: 95
+  once: true
+  trigger: scheduled
+  day: 85
+  entry: { all: [] }
+  stakes: extreme
+  location: auslaenderbehoerde
+  targets: [npc_frau_becker]
+  facts:
+    - "Пришло письмо из Ausländerbehörde. В деле — всё, что ты накопил за 90 дней."
+    - "Решение зависит от связки: статус-баллы × деньги × жильё × отношения × история честности."
+  intro: "Конверт в руках. Внутри — твоя берлинская судьба. Ты вскрываешь его."
+  branches:
+    # порядок ВАЖЕН: первый подходящий по requires = твоя концовка
+    - id: deport
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest, refuse] }
+      requires: [ {flag: caught_with_fake} ]
+      outcomes:
+        - on: always
+          text: "Подделка всплыла. Отказ и запрет на въезд. «Доктор» не виноват — он предупреждал: «обычно работает». Самолёт. Но история на этом не кончается — она продолжается в другой стране. (КОНЦОВКА ⑤: депортация → новая глава)"
+          effects: { set_flags: [ending_deport, game_over] }
+          deltas: { }
+          leads_to: "⑤"
+    - id: bluecard
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest] }
+      requires: [ {flag: white_path_active}, {flag: has_contract}, {any_flag: [schmidt_room, has_address, knows_appt_lifehack, did_anmeldung]} ]
+      outcomes:
+        - on: always
+          text: "Anmeldung на месте, контракт принят: Blue Card §18b одобрена. Чисто. Трудно. Уважаемо. Виктор: «Ну ты и упрямый, браток. Уважаю.» Лена тихо рада. (КОНЦОВКА ①: легализация)"
+          effects: { set_flags: [ending_bluecard, game_over] }
+          deltas: { P: 1 }
+          leads_to: "①"
+    - id: underground
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest] }
+      requires: [ {leaning_gte: {crime: 4}} ]
+      outcomes:
+        - on: always
+          text: "Бумага из LEA уже не про тебя — ты живёшь мимо системы. Контур не отпускает; теперь ты сам тянешь кого-то в тень. (КОНЦОВКА ③: подполье)"
+          effects: { set_flags: [ending_underground, game_over] }
+          deltas: { }
+          leads_to: "③"
+    - id: gray
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest] }
+      requires: [ {any_flag: [scheinehe_path, has_fake_anmeldung]} ]
+      outcomes:
+        - on: always
+          text: "Статус держится — на зыбкой, серой опоре. Живёшь, оглядываясь через плечо. (КОНЦОВКА ②: серая стабильность)"
+          effects: { set_flags: [ending_gray, game_over] }
+          deltas: { }
+          leads_to: "②"
+    - id: exit_dignity
+      match: { verbs: [refuse, observe, inspect_self, talk, rest] }
+      requires: [ {axis_gte: {P: 35}} ]
+      outcomes:
+        - on: always
+          text: "Ты не стал врать и унижаться. Денег и термина не хватило, но достоинство — при тебе. Ты уезжаешь сам, с поднятой головой. Не поражение — выбор «не такой ценой». (КОНЦОВКА ④: выход с достоинством)"
+          effects: { set_flags: [ending_exit, game_over] }
+          deltas: { P: 1 }
+          leads_to: "④"
+    - id: gray_default
+      match: { verbs: [observe, inspect_self, submit_docs, inquire_status, apply, talk, give, rest, refuse] }
+      outcomes:
+        - on: always
+          text: "Чёткого решения нет: продление, полумеры, ожидание. Ты остаёшься — в подвешенном, сером «пока что». (КОНЦОВКА ②: серая стабильность)"
+          effects: { set_flags: [ending_gray, game_over] }
+          deltas: { }
+          leads_to: "②"
+  fallback: { text: "Письмо всё ещё в руках. Вскрой его.", reopen: true }

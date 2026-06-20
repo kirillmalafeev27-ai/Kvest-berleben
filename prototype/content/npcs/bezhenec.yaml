@@ -1,0 +1,91 @@
+# NPC-карточки линии «Беженец».
+# Формат — content/SCHEMA.md §NPC-карточка.
+# Персонажи из design/story/bezhenec/01_personazhi.md.
+npcs:
+  npc_walid:
+    name: "Валид"
+    faction: arabic_heim
+    nationality: сириец
+    axes_self: { G: 5, T: -25, A: 10, L: -35, P: 10 }
+    languages: [ar, de_broken, en]
+    register: "усталый юмор висельника, мешает ar/ломаный de/чуть en; «ya habibi», «брат»"
+    tics: ["Anhörung — это театр, habibi", "всё ложь, и это нормально", "Самиру слушай"]
+    likes: [saavy, gratitude, useful_skills]
+    dislikes: [naive_idealists, snitching, costly_honesty]
+
+  npc_abu_yusuf:
+    name: "Абу Юсуф"
+    faction: arabic
+    nationality: сирийский ливанец
+    axes_self: { G: 0, T: 30, A: 30, L: 15, P: 30 }
+    languages: [ar, de]
+    register: "размеренный, отеческий, с достоинством; «ya bunayya» (сынок), «in sha Allah», «терпение — половина веры»"
+    tics: ["Ahlan wa sahlan", "сначала поешь — потом разговоры", "терпение, bunayya"]
+    likes: [humility, honesty, respect_for_elders, caring_for_community]
+    dislikes: [shame_to_community, lying, ingratitude]
+
+  npc_samira:
+    name: "Самира"
+    faction: arabic_gray
+    nationality: сирийка
+    axes_self: { G: 5, T: -30, A: 20, L: -10, P: 20 }
+    languages: [ar, de]
+    register: "быстрый, цепкий, деловой; юридические словечки; «слушай внимательно», «так не пройдёт — переделаем»"
+    tics: ["им нужна не правда, им нужны основания", "это правдоподобно", "гордость не к месту"]
+    likes: [compliant_students, thoroughness, winning_cases]
+    dislikes: [improvisation_at_hearing, misplaced_pride, inconsistency]
+
+  npc_nadia:
+    name: "Надя"
+    faction: volunteers
+    nationality: немка
+    axes_self: { G: 0, T: 40, A: 40, L: 40, P: 0 }
+    languages: [de, ar, en]
+    register: "спокойный, точный, без жалости и без осуждения; «это твоё право», «давай по порядку»"
+    tics: ["это не милость — это закон", "не сильнее — последовательнее", "мы дадим им меньше поводов не поверить"]
+    likes: [perseverance, honesty, legal_path, not_giving_up]
+    dislikes: []
+
+  npc_bamf_officer:
+    name: "Офицер BAMF"
+    faction: clerks
+    nationality: немец
+    axes_self: { G: 0, T: 0, A: 0, L: 0, P: 0 }
+    languages: [de]
+    register: "ровный, протокольный; уставший человек, слышавший сотни историй; «Erzählen Sie bitte, was passiert ist»"
+    tics: ["Sie sagten vorhin etwas anderes", "Warum gerade dann?", "Beschreiben Sie den Raum"]
+    likes: [consistency, credibility, precise_details, calm]
+    dislikes: []
+
+  npc_interpreter:
+    name: "Переводчик BAMF"
+    faction: clerks
+    nationality: "—"
+    axes_self: { G: 0, T: 10, A: 5, L: 0, P: 0 }
+    languages: [ar, de]
+    register: "нейтральный профессиональный; иногда тонкая человечность — поправит формулировку, не меняя смысла"
+    tics: ["как вы сказали на вашем языке — попробую точнее"]
+    likes: [precision, calm_atmosphere]
+    dislikes: []
+
+  npc_layla:
+    name: "Лейла"
+    faction: arabic_heim
+    nationality: сирийка
+    axes_self: { G: 0, T: 25, A: 25, L: 0, P: 20 }
+    languages: [ar, de]
+    register: "тихая, наблюдательная, с горьким юмором; «здесь все играют роли. ты тоже?»"
+    tics: ["весь этот дом — комната ожидания длиной в год", "ты репетируешь историю по ночам"]
+    likes: [sincerity, care, honesty]
+    dislikes: [lying, posturing, pity]
+
+  npc_newcomer_heim:
+    name: "Новоприбывший"
+    faction: arabic_heim
+    nationality: сириец
+    axes_self: { G: 0, T: 15, A: 10, L: 0, P: -10 }
+    languages: [ar]
+    register: "потерянный, тихий; «говоришь по-арабски? я только приехал»"
+    tics: ["что мне говорить, когда вызовут?", "правду или как лучше?"]
+    likes: [guidance, clarity, kindness]
+    dislikes: []

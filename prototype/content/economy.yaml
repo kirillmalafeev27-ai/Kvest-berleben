@@ -9,6 +9,58 @@ start:
   skills: { deutsch: 20, torg: 5, ubezhdenie: 10, obman: 5, hladnokrovie: 10, ulitsa: 5, byurokratiya: 10, trud: 5 }
   flags: [ has_laptop ]
 
+# Профили семи магистральных линий (overlay поверх start). clock_label — как называется
+# главный «часовой» таймер линии (число лежит в visa_days, движок декрементит его посуточно).
+lines:
+  soiskatel:
+    money: 1400
+    clock_start: 90
+    clock_label: "виза"
+    start_location: hostel_komet
+    flags: [ has_laptop ]
+  bezhenec:
+    money: 80
+    clock_start: 60
+    clock_label: "до Anhörung"
+    start_location: refugee_heim
+    flags: [ work_ban, wohnsitzauflage ]
+    skills: { deutsch: 5, ulitsa: 15, hladnokrovie: 20 }
+  vossoedinenie:
+    money: 60
+    clock_start: 70
+    clock_label: "до продления"
+    start_location: altbau_flat
+    flags: [ with_family ]
+    skills: { deutsch: 15 }
+  student:
+    money: 900
+    clock_start: 75
+    clock_label: "Sperrkonto/учёба"
+    start_location: plattenbau_flat
+    flags: [ has_laptop, work_limit ]
+    skills: { deutsch: 25 }
+  voyna:
+    money: 400
+    clock_start: 80
+    clock_label: "статус §24"
+    start_location: plattenbau_flat
+    flags: [ paragraph24, has_child ]
+    skills: { deutsch: 10, byurokratiya: 15 }
+  zarabotok:
+    money: 200
+    clock_start: 90
+    clock_label: "до расплаты"
+    start_location: overcrowded_flat
+    flags: [ eu_citizen, owes_brigade ]
+    skills: { trud: 30, deutsch: 5, ulitsa: 20, torg: 15 }
+  nevidimka:
+    money: 20
+    clock_start: 99
+    clock_label: "тень"
+    start_location: storefront_church
+    flags: [ undocumented ]
+    skills: { ulitsa: 30, hladnokrovie: 30, deutsch: 3 }
+
 daily:
   cost_base: 25        # еда+транспорт+мелочи, минимум
   cost_max: 40         # если шиковать/болеть

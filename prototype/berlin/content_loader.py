@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 import glob
 import yaml
 
@@ -19,14 +20,25 @@ class Content:
         self.tone_kw: dict = self.verbs_raw.get("tone", {})
         self.locations: dict = self.locations_raw.get("locations", {})
         self.loc_groups: dict = self.locations_raw.get("groups", {})
-        self.npcs: dict = self.npcs_raw.get("npcs", {})
 
-        # события из всех файлов в content/events/
+        # NPC: базовый файл + все content/npcs/*.yaml (по-линейные)
+        self.npcs: dict = dict(self.npcs_raw.get("npcs", {}))
+        for path in sorted(glob.glob(os.path.join(root, "npcs", "*.yaml"))):
+            data = yaml.safe_load(open(path, encoding="utf-8")) or {}
+            self.npcs.update(data.get("npcs", {}))
+
+        # события из всех файлов в content/events/; линия выводится из имени файла
         self.events: dict[str, dict] = {}
         for path in sorted(glob.glob(os.path.join(root, "events", "*.yaml"))):
+            stem = os.path.splitext(os.path.basename(path))[0]
+            line_id = re.sub(r"_act\d+$", "", stem)  # soiskatel_act2 -> soiskatel
             data = yaml.safe_load(open(path, encoding="utf-8")) or {}
             for ev in data.get("events", []):
+                ev.setdefault("line", line_id)
                 self.events[ev["id"]] = ev
+
+    def lines(self) -> dict:
+        return self.economy.get("lines", {})
 
     def _load(self, name: str) -> dict:
         path = os.path.join(self.root, name)

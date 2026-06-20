@@ -39,11 +39,19 @@ class Engine:
         self.director = Director(content.economy)
 
     # ---------- старт ----------
-    def new_game(self, name: str = "Алекс", seed: int = 12345) -> GameState:
+    def new_game(self, name: str = "Алекс", seed: int = 12345, line: str = "soiskatel") -> GameState:
         s = self.c.economy.get("start", {})
+        prof = self.c.lines().get(line, {})
+        skills = dict(s.get("skills", {}))
+        skills.update(prof.get("skills", {}))
         st = GameState(
-            name=name, money=s.get("money", 1400), visa_days=s.get("visa_days", 90),
-            skills=dict(s.get("skills", {})), flags=list(s.get("flags", [])), seed=seed,
+            name=name, line=line, seed=seed,
+            money=prof.get("money", s.get("money", 1400)),
+            visa_days=prof.get("clock_start", s.get("visa_days", 90)),
+            clock_label=prof.get("clock_label", "виза"),
+            location=prof.get("start_location", "hostel_komet"),
+            skills=skills,
+            flags=list(prof.get("flags", s.get("flags", []))),
         )
         return st
 
@@ -169,8 +177,9 @@ class Engine:
             return StepResult(narration=f"Ты в локации: {loc}. Отсюда можно пройти: {nb}.", intent=intent)
         if v == "inspect_self":
             return StepResult(
-                narration=(f"{st.name}, день {st.day}. Деньги: €{st.money}. До конца визы: "
-                           f"{st.visa_days} дн. Голод {st.hunger}, усталость {st.fatigue}, стресс {st.stress}."),
+                narration=(f"{st.name} ({st.line}), день {st.day}. Деньги: €{st.money}. "
+                           f"{st.clock_label}: {st.visa_days}. "
+                           f"Голод {st.hunger}, усталость {st.fatigue}, стресс {st.stress}."),
                 intent=intent)
         if v == "move":
             dest = self._detect_dest(intent)

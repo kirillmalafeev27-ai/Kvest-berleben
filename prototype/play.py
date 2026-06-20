@@ -27,10 +27,12 @@ def main() -> None:
     ap.add_argument("--stub", action="store_true", help="принудительно офлайн (без Claude)")
     ap.add_argument("--debug", action="store_true", help="показывать интенты/оси/ведёт-к")
     ap.add_argument("--seed", type=int, default=12345)
+    ap.add_argument("--line", default="soiskatel",
+                    help="линия: soiskatel|bezhenec|vossoedinenie|student|voyna|zarabotok|nevidimka")
     args = ap.parse_args()
 
     cli = CLI(args.content, save_path=args.save, force_stub=args.stub,
-              debug=args.debug, seed=args.seed)
+              debug=args.debug, seed=args.seed, line=args.line)
 
     if args.script:
         with open(args.script, encoding="utf-8") as f:

@@ -19,13 +19,15 @@ BAR = "─" * 64
 
 class CLI:
     def __init__(self, content_root: str, save_path: str = "berlin_save.sqlite",
-                 force_stub: bool = False, debug: bool = False, seed: int = 12345):
+                 force_stub: bool = False, debug: bool = False, seed: int = 12345,
+                 line: str = "soiskatel"):
         self.content = Content(content_root)
         self.llm = LLM(force_stub=force_stub)
         self.engine = Engine(self.content, self.llm)
         self.store = SaveStore(save_path)
         self.debug = debug
         self.seed = seed
+        self.line = line
         self.st: GameState | None = None
         self._shown_scene: str | None = None
 
@@ -34,7 +36,7 @@ class CLI:
         print(*a)
 
     def status_line(self, st: GameState) -> str:
-        return (f"[День {st.day} · €{st.money} · виза {st.visa_days}д · "
+        return (f"[День {st.day} · €{st.money} · {st.clock_label} {st.visa_days}д · "
                 f"📍{self.content.loc_name(st.location)}]")
 
     def show_scene(self, ev) -> None:
@@ -123,7 +125,7 @@ class CLI:
     def run_interactive(self, load: str | None = None) -> None:
         self.st = self.store.load(load) if load else None
         if not self.st:
-            self.st = self.engine.new_game(seed=self.seed)
+            self.st = self.engine.new_game(seed=self.seed, line=self.line)
         self.out(f"BERLIN: ÜBERLEBEN — прототип (LLM: {self.llm.mode}). /help для команд.")
         while True:
             ev = self.engine.current_scene(self.st)
@@ -141,7 +143,7 @@ class CLI:
             self.store.save(self.st, "auto")
 
     def run_script(self, lines: list[str]) -> None:
-        self.st = self.engine.new_game(seed=self.seed)
+        self.st = self.engine.new_game(seed=self.seed, line=self.line)
         self.out(f"BERLIN: ÜBERLEBEN — скрипт-прогон (LLM: {self.llm.mode}).")
         for line in lines:
             line = line.strip()

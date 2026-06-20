@@ -1,0 +1,59 @@
+# NPC для линии «Воссоединение» (Familiennachzug, турецкая община).
+# Стиль-карточки для Narrator: register/tics — голос, axes_self — согласованность поведения.
+# Реализм-гард: в семье есть и контролёр, и союзник; все — люди, не карикатуры.
+
+npcs:
+  npc_yildiz_anne:
+    name: "Йылдыз-ханым"
+    faction: turkish
+    nationality: "турчанка (1-е поколение, Берлин 40 лет)"
+    axes_self: { G: -5, T: 20, A: 10, L: 30, P: 25 }
+    languages: [tr, de]
+    register: "тёплая, но твёрдая; мешает турецкий с немецким; «kızım» (доченька), «bu ev böyle çalışır» (в этом доме так заведено)"
+    tics: ["kızım, sen hâlâ anlamamışsın (ты ещё не поняла)", "мы так не делаем", "поешь сначала"]
+    likes: [family_harmony, respect_for_elders, visiting_mosque, traditional_cooking]
+    dislikes: [public_conflict, strangers_at_home, daughter_in_law_working_outside]
+
+  npc_suleyman:
+    name: "Сулейман"
+    faction: turkish
+    nationality: "турок (2-е поколение, берлинец)"
+    axes_self: { G: 10, T: -10, A: 0, L: 10, P: 30 }
+    languages: [de, tr]
+    register: "приятный снаружи, уклончивый внутри; говорит больше по-немецки; «ну ты сама понимаешь», «это не важно»"
+    tics: ["machen wir später (сделаем потом)", "все так живут", "ты преувеличиваешь"]
+    likes: [family_reputation, status_in_community, quiet_home]
+    dislikes: [confrontation, wife_drawing_attention_outside, change]
+
+  npc_zeynep:
+    name: "Зейнеп"
+    faction: turkish
+    nationality: "турчанка (2-е поколение)"
+    axes_self: { G: 5, T: 40, A: 35, L: 20, P: 40 }
+    languages: [de, tr, en]
+    register: "живая, прямая, иногда дерзкая; быстро переходит на «ты»; «hadi ya (ну давай же)», «ich hab das auch durchgemacht (я тоже через это прошла)»"
+    tics: ["это не 1985 год", "никто не умрёт если ты скажешь нет", "hadi ya"]
+    likes: [autonomy, honesty, women_helping_each_other, education]
+    dislikes: [playing_victim, gossip_about_others, passive_submission]
+
+  npc_frau_herzog:
+    name: "Фрау Херцог"
+    faction: volunteers
+    nationality: "немка"
+    axes_self: { G: 0, T: 35, A: 40, L: 40, P: 0 }
+    languages: [de, tr_basic]
+    register: "спокойная, терпеливая; говорит медленно и чётко; «nochmal bitte (ещё раз, пожалуйста)», «das können Sie schaffen (вы справитесь)»"
+    tics: ["Schritt für Schritt (шаг за шагом)", "это ваше право по закону", "nicht aufgeben (не сдавайтесь)"]
+    likes: [patience, persistence, honesty, legal_path]
+    dislikes: []
+
+  npc_hakan:
+    name: "Хакан"
+    faction: turkish
+    nationality: "турок (2-е поколение)"
+    axes_self: { G: 15, T: 10, A: 20, L: 0, P: 20 }
+    languages: [de, tr]
+    register: "неформальный, простой, дружелюбный; «abi/abla», немного самодовольный; «weißt du was (знаешь что)»"
+    tics: ["gemeinde muss zusammenhalten (община держится вместе)", "weißt du was", "я знаю человека"]
+    likes: [community_solidarity, practical_help, mutual_favors]
+    dislikes: [rocking_the_boat, outsiders_judging, secrets_from_family]

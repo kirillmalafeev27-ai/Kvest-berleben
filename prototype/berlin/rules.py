@@ -29,6 +29,8 @@ class Resolver:
         if key == "visa_lte":     return st.visa_days <= val
         if key == "flag":         return st.has(val)
         if key == "flag_not":     return not st.has(val)
+        if key == "any_flag":     return any(st.has(f) for f in val)
+        if key == "all_flags":    return all(st.has(f) for f in val)
         if key == "money_lt":     return st.money < val
         if key == "money_gte":    return st.money >= val
         if key == "location":     return val == "any" or st.location == val
@@ -60,6 +62,8 @@ class Resolver:
     def eligible(self, st: GameState) -> list[dict]:
         out = []
         for ev in self.c.events.values():
+            if ev.get("line") not in (st.line, "shared", None):
+                continue
             if ev.get("once") and ev["id"] in st.fired_events:
                 continue
             if st.cooldowns.get(ev["id"], 0) > st.day:

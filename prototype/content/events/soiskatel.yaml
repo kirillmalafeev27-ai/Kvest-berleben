@@ -587,6 +587,7 @@ events:
 
 # ---------- РЕАКТИВНЫЕ / ФОНОВЫЕ ----------
 - id: ubahn_control
+  line: shared
   title: "Контролёры в U-Bahn"
   category: pressure
   act: 1
@@ -683,6 +684,7 @@ events:
   fallback: { text: "Деньги не появятся сами.", reopen: true }
 
 - id: relief_hasenheide
+  line: shared
   title: "День в Хазенхайде"
   category: ambient
   act: 1

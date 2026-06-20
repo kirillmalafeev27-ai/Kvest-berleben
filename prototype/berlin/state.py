@@ -19,7 +19,8 @@ class GameState:
     time_of_day: str = "morning"        # morning | day | evening | night
     location: str = "hostel_komet"
     money: int = 1400
-    visa_days: int = 90
+    visa_days: int = 90              # главный «часовой» таймер линии (число)
+    clock_label: str = "виза"        # как называется таймер у этой линии
 
     hunger: int = 0
     stress: int = 0
