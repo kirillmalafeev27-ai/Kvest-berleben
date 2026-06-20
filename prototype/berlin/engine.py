@@ -11,6 +11,7 @@ from .rules import Resolver
 from .analyst import Analyst
 from .narrator import Narrator
 from .director import Director
+from .gm import GM
 from .llm import LLM
 
 
@@ -37,6 +38,7 @@ class Engine:
         self.analyst = Analyst(content.economy)
         self.narrator = Narrator(content, self.llm)
         self.director = Director(content.economy)
+        self.gm = GM(content, self.llm)
 
     # ---------- старт ----------
     def new_game(self, name: str = "Алекс", seed: int = 12345, line: str = "soiskatel") -> GameState:
@@ -126,7 +128,7 @@ class Engine:
     def _resolve(self, st: GameState, ev: dict, intent: dict) -> StepResult:
         br = self.rules.match_branch(ev, intent, st)
         if br is None:
-            return self._steer(st, ev, intent)   # мир откликается на что угодно и ведёт обратно
+            return self._gm_react(st, ev, intent)   # Ведущий реагирует по существу действия
 
         seed_key = f"{st.seed}:{st.turn}:{ev['id']}:{br['id']}"
         rng = random.Random(seed_key)
@@ -186,17 +188,26 @@ class Engine:
                     fare_dodge = intent.get("method") == "transit_fare_dodge"
                     return self.travel(st, dest, fare_dodge)
                 return StepResult(narration="Куда именно? Назови место (или используй /goto).", intent=intent)
-        # дикие/неожиданные/непонятные действия в вольном режиме — мир всё равно живой
-        fw = self.c.wild_free.get(v) or (self.c.wild_free.get("unknown") if raw_unknown else None)
-        if fw:
-            place = self.c.loc_name(st.location)
-            changes = self.rules.apply_effects(st, {}, fw.get("effects", {}), self.c.economy)
-            deltas = self.analyst.apply(st, intent, {"deltas": fw.get("deltas", {})}, "low")
-            text = self._fmt(fw.get("default", "..."), "прохожий", place, "")
-            return StepResult(narration=text, changes=changes, deltas=deltas,
-                              reflection=self.narrator.reflection(st.axes), intent=intent)
-        steer = self.c.wild_free.get("default_steer", "Осмотрись, перейди куда-то или передохни.")
-        return StepResult(narration="Сейчас тут ничего особенного не происходит. " + steer, intent=intent)
+        # всё прочее (дикое/неожиданное/нестандартное) — Ведущий реагирует по существу действия
+        return self._gm_react(st, None, intent)
+
+    def _gm_react(self, st: GameState, ev: dict | None, intent: dict) -> StepResult:
+        r = self.gm.react(st, intent, ev)
+        ch = r.get("state_changes", {}) or {}
+        changes = self.gm.apply(st, ch)
+        deltas = self.analyst.apply(st, intent, {"deltas": r.get("axis_hints", {})}, (ev or {}).get("stakes", "low"))
+        day_adv = False
+        for _ in range(min(int(ch.get("time_advance_days", 0) or 0), 3)):
+            self._advance_day(st); day_adv = True
+        narration = r.get("narration", "...")
+        if r.get("npc_reaction"):
+            narration += f"\n— {r['npc_reaction']}."
+        if ev:
+            st.active_event = ev["id"]   # ситуация просто продолжается (никакого меню)
+        return StepResult(narration=narration, changes=changes, deltas=deltas,
+                          reflection=self.narrator.reflection(st.axes),
+                          leads_to=r.get("interpretation"), day_advanced=day_adv,
+                          event_id=(ev or {}).get("id"), branch_id="_gm", intent=intent)
 
     # ---------- «мир откликается на что угодно» (steering к сюжету) ----------
     VERB_HINT = {
