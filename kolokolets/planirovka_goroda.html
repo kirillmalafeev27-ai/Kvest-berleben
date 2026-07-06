@@ -1,0 +1,410 @@
+<title>Колоколец — планировка города</title>
+<style>
+  :root{
+    --paper:#E9E0C6; --paper-2:#E2D7B9; --panel:#EFE7D0;
+    --ink:#33291C; --ink-soft:#6E6047; --line:#B7A87F;
+    --foliage:#708B4A; --foliage-deep:#546B38;
+    --water:#6E88A0; --roof-slate:#566E86; --roof-brick:#A85C3C;
+    --wall:#F0EAD7; --door:#5A4632;
+    --accent:#C0801A; --accent-bright:#E3A93A; --square:#E6D19B;
+    --shadow:rgba(60,48,28,.16); --frame:#9C8A5F;
+    --badge-ink:#fff;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#172032; --paper-2:#121A29; --panel:#1B2437;
+      --ink:#EBE4CE; --ink-soft:#A69C80; --line:#3A4763;
+      --foliage:#4E6B57; --foliage-deep:#3A5044;
+      --water:#3E5A75; --roof-slate:#3A4C64; --roof-brick:#7E4632;
+      --wall:#38455E; --door:#20293B;
+      --accent:#E7A93A; --accent-bright:#FFD483; --square:#463f2b;
+      --shadow:rgba(0,0,0,.35); --frame:#39445E;
+      --badge-ink:#141b28;
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#E9E0C6; --paper-2:#E2D7B9; --panel:#EFE7D0;
+    --ink:#33291C; --ink-soft:#6E6047; --line:#B7A87F;
+    --foliage:#708B4A; --foliage-deep:#546B38; --water:#6E88A0;
+    --roof-slate:#566E86; --roof-brick:#A85C3C; --wall:#F0EAD7; --door:#5A4632;
+    --accent:#C0801A; --accent-bright:#E3A93A; --square:#E6D19B;
+    --shadow:rgba(60,48,28,.16); --frame:#9C8A5F; --badge-ink:#fff;
+  }
+  :root[data-theme="dark"]{
+    --paper:#172032; --paper-2:#121A29; --panel:#1B2437;
+    --ink:#EBE4CE; --ink-soft:#A69C80; --line:#3A4763;
+    --foliage:#4E6B57; --foliage-deep:#3A5044; --water:#3E5A75;
+    --roof-slate:#3A4C64; --roof-brick:#7E4632; --wall:#38455E; --door:#20293B;
+    --accent:#E7A93A; --accent-bright:#FFD483; --square:#463f2b;
+    --shadow:rgba(0,0,0,.35); --frame:#39445E; --badge-ink:#141b28;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.5;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:clamp(20px,4vw,52px) clamp(16px,4vw,40px) 64px}
+
+  .masthead{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:22px}
+  .eyebrow{font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); font-weight:700; margin:0 0 8px}
+  h1{
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+    font-size:clamp(40px,8vw,74px); line-height:.92; margin:0; font-weight:600;
+    letter-spacing:.01em; text-wrap:balance;
+  }
+  .sub{margin:10px 0 0; max-width:52ch; color:var(--ink-soft); font-size:clamp(14px,1.6vw,16px)}
+  .stamp{
+    flex:0 0 auto; border:1px solid var(--frame); border-radius:999px; padding:9px 16px;
+    font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-soft);
+    background:var(--panel); white-space:nowrap;
+  }
+
+  .plate{
+    position:relative; background:var(--panel);
+    border:1px solid var(--frame); border-radius:6px;
+    box-shadow:0 1px 0 var(--frame) inset, 0 18px 40px -24px var(--shadow);
+    padding:clamp(10px,2vw,20px);
+  }
+  .plate::after{content:""; position:absolute; inset:7px; border:1px solid var(--frame); border-radius:3px; opacity:.5; pointer-events:none}
+  .map{display:block; width:100%; height:auto; border-radius:3px; position:relative; z-index:1}
+
+  /* SVG themed regions */
+  .land{fill:var(--paper)}
+  .hill{fill:var(--foliage); opacity:.16}
+  .grove{fill:var(--foliage); opacity:.9}
+  .grove-d{fill:var(--foliage-deep)}
+  .water{fill:none; stroke:var(--water); stroke-width:11; stroke-linecap:round; opacity:.85}
+  .road{fill:none; stroke:var(--line); stroke-linecap:round; stroke-linejoin:round}
+  .road-main{stroke-width:15; opacity:.9}
+  .road-ring{stroke-width:9; opacity:.7}
+  .footpath{fill:none; stroke:var(--line); stroke-width:4.5; stroke-linecap:round; stroke-dasharray:2 9; opacity:.85}
+  .square-cobble{fill:var(--square); opacity:.9}
+  .wall{fill:var(--wall)}
+  .roofS{fill:var(--roof-slate)} .roofB{fill:var(--roof-brick)} .roofG{fill:var(--foliage-deep)}
+  .door{fill:var(--door)} .win{fill:var(--accent); opacity:.55}
+  .ink{fill:var(--ink)} .inkline{stroke:var(--ink); fill:none}
+  .amber{fill:var(--accent)} .amber-b{fill:var(--accent-bright)}
+  .lbl{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif; fill:var(--ink); font-size:19px; font-weight:600}
+  .lbl-s{font-family:"Avenir Next","Segoe UI",system-ui,sans-serif; fill:var(--ink-soft); font-size:13px; letter-spacing:.02em}
+  .note{font-family:"Avenir Next","Segoe UI",system-ui,sans-serif; fill:var(--ink-soft); font-size:13.5px; font-style:italic}
+  .note-lead{stroke:var(--ink-soft); stroke-width:1; fill:none; stroke-dasharray:2 4; opacity:.7}
+  .compass-ring{fill:none; stroke:var(--frame); stroke-width:1.5}
+  .badge{fill:var(--accent)} .badge-t{fill:var(--badge-ink); font-family:"Avenir Next",system-ui,sans-serif; font-weight:700; font-size:15px}
+  .grain{opacity:.05; mix-blend-mode:multiply}
+  @media (prefers-color-scheme:dark){ .grain{mix-blend-mode:screen; opacity:.07} }
+  :root[data-theme="dark"] .grain{mix-blend-mode:screen; opacity:.07}
+  :root[data-theme="light"] .grain{mix-blend-mode:multiply; opacity:.05}
+
+  /* Legend */
+  .legend{margin-top:30px}
+  .legend h2{
+    font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600;
+    font-size:14px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft);
+    margin:0 0 14px; padding-bottom:10px; border-bottom:1px solid var(--frame);
+  }
+  .keys{display:grid; grid-template-columns:repeat(auto-fill,minmax(248px,1fr)); gap:14px}
+  .key{display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:start;
+    background:var(--panel); border:1px solid var(--frame); border-radius:8px; padding:13px 15px}
+  .dot{width:28px; height:28px; border-radius:50%; display:grid; place-items:center;
+    background:var(--accent); color:var(--badge-ink); font-weight:700; font-size:14px; flex:0 0 auto;
+    font-variant-numeric:tabular-nums}
+  .dot.t{background:var(--ink)}
+  .key h3{margin:0; font-size:15px; font-family:"Iowan Old Style",Palatino,Georgia,serif; font-weight:600}
+  .key .who{color:var(--accent); font-weight:600; font-size:12.5px}
+  .key p{margin:3px 0 0; font-size:12.5px; color:var(--ink-soft); line-height:1.42}
+  .key .asset{margin-top:6px; font-size:11px; color:var(--ink-soft); letter-spacing:.02em; opacity:.85}
+  .key .asset b{color:var(--ink); font-weight:600}
+
+  .foot{margin-top:26px; display:flex; gap:10px 22px; flex-wrap:wrap; align-items:center;
+    font-size:12.5px; color:var(--ink-soft); border-top:1px solid var(--frame); padding-top:16px}
+  .foot .pill{border:1px solid var(--frame); border-radius:999px; padding:4px 11px; letter-spacing:.04em}
+  .foot .free{color:var(--accent); font-weight:700}
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Планировка уровня · процедурный квест</p>
+      <h1>Колоколец</h1>
+      <p class="sub">Городок на холме, которого нет на карте. Вечное почти-лето, канун столетия.
+        Девять жителей, одна башня, одна полночь — и всё вращается вокруг сердца, которое молчит тридцать лет.</p>
+    </div>
+    <div class="stamp">Карта для сборки сцены</div>
+  </header>
+
+  <div class="plate">
+    <svg class="map" viewBox="0 0 1000 860" role="img"
+         aria-label="Стилизованная карта-планировка города Колоколец: центральная площадь с часовой башней, кольцо из девяти локаций жителей, тропа на верхний холм к беседке звездочёта, ворота внизу.">
+      <defs>
+        <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="4" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter>
+
+        <!-- cottage: ground-centre at (0,0) -->
+        <symbol id="cot" overflow="visible">
+          <ellipse cx="0" cy="2" rx="30" ry="8" fill="var(--shadow)"/>
+          <rect class="wall" x="-23" y="-34" width="46" height="34" rx="2"/>
+          <polygon points="-30,-33 0,-58 30,-33" style="fill:var(--roof)"/>
+          <rect class="door" x="-7" y="-19" width="14" height="19" rx="1.5"/>
+          <rect class="win" x="-19" y="-28" width="9" height="9" rx="1"/>
+          <rect class="win" x="10" y="-28" width="9" height="9" rx="1"/>
+        </symbol>
+        <!-- tree -->
+        <symbol id="tree" overflow="visible">
+          <ellipse cx="0" cy="2" rx="16" ry="5" fill="var(--shadow)"/>
+          <rect x="-3" y="-16" width="6" height="18" fill="var(--door)"/>
+          <circle class="grove" cx="0" cy="-26" r="20"/>
+          <circle class="grove-d" cx="-9" cy="-20" r="10" opacity=".5"/>
+          <circle class="amber-b" cx="7" cy="-30" r="3.2"/>
+          <circle class="roofB" cx="-6" cy="-33" r="3" opacity=".9"/>
+        </symbol>
+      </defs>
+
+      <!-- LAND -->
+      <path class="land" d="M60,470
+        C40,300 190,150 380,140 C470,135 470,80 540,80 C650,80 660,168 720,196
+        C880,250 960,360 940,500 C925,620 940,700 840,760 C700,842 560,812 500,812
+        C420,812 300,842 200,780 C96,716 78,600 60,470 Z"/>
+      <!-- upper hill wash -->
+      <path class="hill" d="M300,300 C360,150 470,120 540,132 C660,150 700,250 690,320 C560,270 420,270 300,300 Z"/>
+      <!-- lower town shelf wash -->
+      <ellipse class="hill" cx="500" cy="560" rx="360" ry="230"/>
+
+      <!-- STREAM (west) + bridge gap -->
+      <path class="water" d="M150,250 C210,340 150,420 190,500 C230,585 150,650 210,730"/>
+
+      <!-- ROADS -->
+      <!-- main street from gate up to square -->
+      <path class="road road-main" d="M500,824 C500,760 500,712 500,660"/>
+      <!-- ring around square -->
+      <path class="road road-ring" d="M500,352 C356,352 300,470 330,560 C360,650 440,672 500,672 C566,672 660,640 676,548 C692,452 640,352 500,352 Z"/>
+      <!-- footpaths to outer plots -->
+      <path class="footpath" d="M360,600 C320,650 300,668 288,690"/>
+      <path class="footpath" d="M642,588 C700,616 742,636 760,656"/>
+      <path class="footpath" d="M470,398 C452,394 452,394 452,392"/>
+      <!-- winding path up to gazebo -->
+      <path class="footpath" d="M500,410 C476,352 540,320 512,268 C486,220 520,190 500,168"/>
+      <!-- little bridge over stream on the gate path -->
+      <g stroke="var(--line)" stroke-width="3" opacity=".8">
+        <line x1="176" y1="560" x2="204" y2="560"/>
+        <line x1="180" y1="552" x2="180" y2="568"/>
+        <line x1="200" y1="552" x2="200" y2="568"/>
+      </g>
+
+      <!-- SQUARE -->
+      <ellipse class="square-cobble" cx="500" cy="512" rx="156" ry="118"/>
+      <ellipse cx="500" cy="512" rx="156" ry="118" fill="none" stroke="var(--frame)" stroke-width="1.5" opacity=".5"/>
+      <!-- festival lantern dots ringing the square (glow in dark) -->
+      <g filter="url(#glow)">
+        <circle class="amber-b" cx="500" cy="394" r="3.4"/>
+        <circle class="amber-b" cx="590" cy="418" r="3.4"/>
+        <circle class="amber-b" cx="640" cy="500" r="3.4"/>
+        <circle class="amber-b" cx="596" cy="588" r="3.4"/>
+        <circle class="amber-b" cx="404" cy="588" r="3.4"/>
+        <circle class="amber-b" cx="360" cy="500" r="3.4"/>
+        <circle class="amber-b" cx="410" cy="418" r="3.4"/>
+      </g>
+
+      <!-- ORCHARD scatter -->
+      <use href="#tree" x="150" y="360"/><use href="#tree" x="120" y="640"/>
+      <use href="#tree" x="835" y="360"/><use href="#tree" x="860" y="600"/>
+      <use href="#tree" x="720" y="742"/><use href="#tree" x="255" y="748"/>
+
+      <!-- ===== BUILDINGS ===== -->
+
+      <!-- TOWER (centre) -->
+      <g transform="translate(500,512)">
+        <ellipse cx="0" cy="6" rx="34" ry="10" fill="var(--shadow)"/>
+        <rect class="wall" x="-26" y="-78" width="52" height="84" rx="3"/>
+        <polygon class="roofS" points="-34,-78 0,-118 34,-78"/>
+        <circle cx="0" cy="4" r="0"/>
+        <!-- clock face -->
+        <circle cx="0" cy="-52" r="17" fill="var(--wall)" stroke="var(--accent)" stroke-width="3"/>
+        <g filter="url(#glow)">
+          <circle cx="0" cy="-52" r="13" fill="none" stroke="var(--accent-bright)" stroke-width="2" opacity=".8"/>
+        </g>
+        <line class="inkline" x1="0" y1="-52" x2="0" y2="-62" stroke-width="2.4"/>
+        <line class="inkline" x1="0" y1="-52" x2="8" y2="-49" stroke-width="2.4"/>
+        <rect class="door" x="-8" y="-20" width="16" height="20" rx="1.5"/>
+      </g>
+      <g transform="translate(500,392)">
+        <text class="lbl" text-anchor="middle" y="-88">Часовая башня</text>
+        <text class="lbl-s" text-anchor="middle" y="-70">сердце города · молчит 30 лет</text>
+      </g>
+
+      <!-- 1 Bakery Greta -->
+      <g transform="translate(330,560)"><use href="#cot" style="--roof:var(--roof-brick)"/></g>
+      <!-- 2 Cafe Bruno (on the square, hub) -->
+      <g transform="translate(560,600)"><use href="#cot" style="--roof:var(--roof-slate)"/></g>
+      <!-- 3 Player / grandfather cottage -->
+      <g transform="translate(448,404)"><use href="#cot" style="--roof:var(--foliage-deep)"/></g>
+      <!-- 4 Town hall Amina (bigger) -->
+      <g transform="translate(690,486) scale(1.18)"><use href="#cot" style="--roof:var(--roof-slate)"/></g>
+      <!-- 5 Police booth Paul (small) -->
+      <g transform="translate(362,420) scale(.8)"><use href="#cot" style="--roof:var(--roof-brick)"/></g>
+      <!-- 6 Post Vera -->
+      <g transform="translate(648,404)"><use href="#cot" style="--roof:var(--roof-brick)"/></g>
+      <!-- 7 Mia workshop (apart, SE edge) -->
+      <g transform="translate(778,662)"><use href="#cot" style="--roof:var(--roof-slate)"/></g>
+
+      <!-- 8 Market under plane tree + Teo garden (SW) -->
+      <g transform="translate(288,700)">
+        <ellipse cx="0" cy="4" rx="30" ry="8" fill="var(--shadow)"/>
+        <rect x="-4" y="-22" width="8" height="26" fill="var(--door)"/>
+        <circle class="grove" cx="0" cy="-36" r="34"/>
+        <circle class="grove-d" cx="-14" cy="-30" r="16" opacity=".45"/>
+        <!-- stalls -->
+        <g transform="translate(-40,-6)">
+          <rect class="wall" x="-14" y="-14" width="28" height="14"/>
+          <polygon class="roofB" points="-17,-14 0,-24 17,-14"/>
+        </g>
+        <g transform="translate(40,-2)">
+          <rect class="wall" x="-14" y="-14" width="28" height="14"/>
+          <polygon class="roofS" points="-17,-14 0,-24 17,-14"/>
+        </g>
+      </g>
+      <!-- garden rows -->
+      <g fill="var(--foliage)" opacity=".85">
+        <circle cx="210" cy="700" r="7"/><circle cx="228" cy="710" r="7"/><circle cx="246" cy="702" r="7"/>
+        <circle cx="200" cy="686" r="6"/><circle cx="222" cy="726" r="6"/>
+      </g>
+
+      <!-- 9 Gazebo (upper hill) -->
+      <g transform="translate(500,158)">
+        <ellipse cx="0" cy="6" rx="30" ry="8" fill="var(--shadow)"/>
+        <rect x="-22" y="-6" width="44" height="8" class="wall"/>
+        <line class="inkline" x1="-18" y1="-6" x2="-18" y2="-30" stroke-width="3"/>
+        <line class="inkline" x1="18" y1="-6" x2="18" y2="-30" stroke-width="3"/>
+        <line class="inkline" x1="0" y1="-6" x2="0" y2="-30" stroke-width="3" opacity=".5"/>
+        <path class="roofS" d="M-30,-30 L0,-52 L30,-30 Z"/>
+        <circle class="amber-b" cx="0" cy="-38" r="3" filter="url(#glow)"/>
+      </g>
+
+      <!-- GATE (day 1 arrival) -->
+      <g transform="translate(500,822)">
+        <line class="inkline" x1="-26" y1="0" x2="-26" y2="-30" stroke-width="4"/>
+        <line class="inkline" x1="26" y1="0" x2="26" y2="-30" stroke-width="4"/>
+        <path class="roofB" d="M-34,-30 L0,-44 L34,-30 Z"/>
+      </g>
+
+      <!-- ===== NUMBER BADGES ===== -->
+      <g font-family="Avenir Next, system-ui, sans-serif">
+        <g transform="translate(330,516)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">1</text></g>
+        <g transform="translate(560,556)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">2</text></g>
+        <g transform="translate(448,360)"><circle class="badge" r="13" style="fill:var(--foliage-deep)"/><text class="badge-t" text-anchor="middle" y="5">3</text></g>
+        <g transform="translate(724,452)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">4</text></g>
+        <g transform="translate(362,384)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">5</text></g>
+        <g transform="translate(648,360)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">6</text></g>
+        <g transform="translate(778,618)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">7</text></g>
+        <g transform="translate(288,742)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">8</text></g>
+        <g transform="translate(500,110)"><circle class="badge" r="13"/><text class="badge-t" text-anchor="middle" y="5">9</text></g>
+      </g>
+
+      <!-- ===== MARGIN NOTES ===== -->
+      <path class="note-lead" d="M690,150 C620,150 560,200 520,250"/>
+      <text class="note" x="700" y="146">верхний холм — тропа вверх;</text>
+      <text class="note" x="700" y="164">сюда за «сердцем» механизма</text>
+
+      <path class="note-lead" d="M300,820 C360,806 430,808 470,812"/>
+      <text class="note" x="80" y="820">ворота — сюда приходит Алекс в день 1</text>
+
+      <path class="note-lead" d="M556,470 C540,478 528,486 520,494"/>
+      <text class="note" x="560" y="452">финал: полночь юбилея,</text>
+      <text class="note" x="560" y="470">башня бьёт впервые за 30 лет</text>
+
+      <!-- COMPASS -->
+      <g transform="translate(916,120)">
+        <circle class="compass-ring" r="26"/>
+        <polygon class="amber" points="0,-24 6,0 0,-6 -6,0"/>
+        <polygon class="ink" points="0,24 6,0 0,6 -6,0"/>
+        <text class="lbl-s" text-anchor="middle" y="-30" style="font-weight:700; fill:var(--ink)">С</text>
+      </g>
+
+      <!-- SCALE -->
+      <g transform="translate(792,806)">
+        <line x1="0" y1="0" x2="90" y2="0" stroke="var(--ink)" stroke-width="2"/>
+        <line x1="0" y1="-4" x2="0" y2="4" stroke="var(--ink)" stroke-width="2"/>
+        <line x1="90" y1="-4" x2="90" y2="4" stroke="var(--ink)" stroke-width="2"/>
+        <text class="lbl-s" x="45" y="16" text-anchor="middle">≈ 2 минуты пешком</text>
+      </g>
+
+      <!-- grain overlay -->
+      <rect class="grain" x="0" y="0" width="1000" height="860" filter="url(#grain)"/>
+    </svg>
+  </div>
+
+  <section class="legend">
+    <h2>Ключ карты · локация → житель → бесплатный ассет</h2>
+    <div class="keys">
+      <div class="key"><span class="dot t">✦</span><div>
+        <h3>Часовая башня</h3><span class="who">сердце города</span>
+        <p>Центр площади. Молчит 30 лет. В полночь юбилея — карильон, луч-фонарь, капсула времени.</p>
+        <p class="asset"><b>Fantasy Town Kit</b> (башня) + Sketchfab «CC0 Gear» (шестерни) · циферблат — декаль</p>
+      </div></div>
+
+      <div class="key"><span class="dot">1</span><div>
+        <h3>Пекарня</h3><span class="who">бабушка Грета</span>
+        <p>Хранит нотный валик. Тёплый узел «той ночи».</p>
+        <p class="asset"><b>Tiny Treats — Bakery Interior</b> + Baked Goods (CC0)</p>
+      </div></div>
+
+      <div class="key"><span class="dot">2</span><div>
+        <h3>Кафе «Тёплый ковш»</h3><span class="who">Бруно</span>
+        <p>На самой площади. Хаб молвы и вечерних историй.</p>
+        <p class="asset"><b>KayKit Restaurant Bits</b> + Tiny Treats Charming Kitchen (CC0)</p>
+      </div></div>
+
+      <div class="key"><span class="dot" style="background:var(--foliage-deep)">3</span><div>
+        <h3>Дом смотрителя</h3><span class="who">Алекс + дед Тобиас</span>
+        <p>Дом игрока у подножия башни. Отсюда начинается письмо.</p>
+        <p class="asset"><b>Tiny Treats — Homely House</b> + House Plants (CC0)</p>
+      </div></div>
+
+      <div class="key"><span class="dot">4</span><div>
+        <h3>Ратуша</h3><span class="who">мэр Амина</span>
+        <p>Юбилей — её проект. Даёт допуск на башню.</p>
+        <p class="asset"><b>Kenney Furniture Kit</b> + KayKit Furniture Bits (CC0)</p>
+      </div></div>
+
+      <div class="key"><span class="dot">5</span><div>
+        <h3>Будка констебля</h3><span class="who">Пауль</span>
+        <p>Порядок и ключ-заводилка «по описи».</p>
+        <p class="asset"><b>Kenney Furniture Kit</b> + Generic Items (CC0)</p>
+      </div></div>
+
+      <div class="key"><span class="dot">6</span><div>
+        <h3>Почта</h3><span class="who">Вера</span>
+        <p>Завязка (письмо деда) и застрявшее письмо Греты.</p>
+        <p class="asset"><b>KayKit Furniture Bits</b> + Generic Items (CC0)</p>
+      </div></div>
+
+      <div class="key"><span class="dot">7</span><div>
+        <h3>Мастерская</h3><span class="who">Мия</span>
+        <p>На отшибе. Единственная, кто починит механизм.</p>
+        <p class="asset"><b>3dmodelscc0 Industrial Props</b> + Blinktool Tools (CC0/free)</p>
+      </div></div>
+
+      <div class="key"><span class="dot">8</span><div>
+        <h3>Рынок под платаном + сад</h3><span class="who">Тео</span>
+        <p>Садовник и сторож. Чердак потерянных вещей. Тайна змея.</p>
+        <p class="asset"><b>Fantasy Town Kit</b> (прилавки) + Nature Kit (платан) (CC0)</p>
+      </div></div>
+
+      <div class="key"><span class="dot">9</span><div>
+        <h3>Беседка звездочёта</h3><span class="who">Мельхиор</span>
+        <p>Верхний холм. Знает, где спрятано «сердце».</p>
+        <p class="asset"><b>Fantasy Town Kit</b> (беседка) + Poly Pizza «telescope» (CC0)</p>
+      </div></div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span class="pill free">100% бесплатно</span>
+    <span>Все паки — CC0 / free commercial. Полный список и лицензии — <b>kolokolets/06_assety_goroda_i_interera.md</b></span>
+    <span class="pill">Персонажи — 9 готовых GLB (models_baked)</span>
+  </div>
+</div>
