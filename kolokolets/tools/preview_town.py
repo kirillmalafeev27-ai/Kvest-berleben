@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Превью kolokolets_town.glb: софт-рендер matplotlib (изометрия, как референс).
-Painter's algorithm послойно: террейн → плоские накладки → объекты (по глубине)."""
+Поддерживает инстансы (ноды с трансформами) и текстурные материалы кита."""
 import numpy as np, trimesh, matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -10,23 +10,45 @@ src = __file__.rsplit("/", 1)[0] + "/../kolokolets_town.glb"
 scene = trimesh.load(src)
 light = np.array([0.45, 0.8, 0.35]); light /= np.linalg.norm(light)
 
-LAYER = {"grass": 0, "grass_dark": 0, "cliff": 0,
-         "plaza": 1, "plaza2": 1, "path": 1, "water": 1}
+LAYER0 = ("prim_grass", "prim_grass_dark", "prim_cliff")
+LAYER1 = ("prim_plaza", "prim_plaza2", "prim_path", "prim_water")
+
+def face_colors(geom):
+    """Средний цвет граней: vertex colors / текстура кита / baseColorFactor."""
+    vis = geom.visual
+    if isinstance(vis, trimesh.visual.ColorVisuals):
+        vc = np.asarray(vis.vertex_colors, dtype=float)[:, :3] / 255.0
+        return vc[geom.faces].mean(axis=1)
+    try:
+        cv = vis.to_color()
+        vc = np.asarray(cv.vertex_colors, dtype=float)[:, :3] / 255.0
+        return vc[geom.faces].mean(axis=1)
+    except Exception:
+        base = np.array(vis.material.baseColorFactor[:3], dtype=float)
+        if base.max() > 1.0:
+            base = base / 255.0
+        return np.tile(base, (len(geom.faces), 1))
 
 ELEV, AZIM = 35, -66
 el, az = np.deg2rad(ELEV), np.deg2rad(AZIM)
 view = np.array([np.cos(el) * np.cos(az), np.cos(el) * np.sin(az), np.sin(el)])
 
+# кэш цветов по имени геометрии (инстансы делят геометрию)
+color_cache = {name: face_colors(g) for name, g in scene.geometry.items()}
+
 packs = {0: [], 1: [], 2: []}
-for name, geom in scene.geometry.items():
-    base = np.array(geom.visual.material.baseColorFactor[:3], dtype=float)
-    if base.max() > 1.0:
-        base = base / 255.0
-    tv = geom.vertices[geom.faces]                        # (n,3,3) Y-up
-    shade = 0.6 + 0.4 * np.clip(geom.face_normals @ light, 0, 1)
-    pv = np.stack([tv[:, :, 0], -tv[:, :, 2], tv[:, :, 1]], axis=-1)  # север вверх
-    cols = np.clip(base[None, :] * shade[:, None], 0, 1)
-    packs[LAYER.get(name, 2)].append((pv, cols))
+for node in scene.graph.nodes_geometry:
+    world, gname = scene.graph[node]
+    geom = scene.geometry[gname]
+    tv = trimesh.transformations.transform_points(
+        geom.vertices, world)[geom.faces]                  # (n,3,3) Y-up мир
+    n = np.cross(tv[:, 1] - tv[:, 0], tv[:, 2] - tv[:, 0])
+    n /= (np.linalg.norm(n, axis=1, keepdims=True) + 1e-9)
+    shade = 0.62 + 0.38 * np.clip(n @ light, 0, 1)
+    pv = np.stack([tv[:, :, 0], -tv[:, :, 2], tv[:, :, 1]], axis=-1)
+    cols = np.clip(color_cache[gname] * shade[:, None], 0, 1)
+    layer = 0 if gname in LAYER0 else 1 if gname in LAYER1 else 2
+    packs[layer].append((pv, cols))
 
 fig = plt.figure(figsize=(13, 10), dpi=110)
 ax = fig.add_subplot(111, projection="3d", proj_type="ortho")
@@ -35,8 +57,7 @@ for layer in (0, 1, 2):
         continue
     pv = np.concatenate([p for p, _ in packs[layer]])
     cols = np.concatenate([c for _, c in packs[layer]])
-    depth = pv.mean(axis=1) @ view
-    order = np.argsort(depth)                              # дальние первыми
+    order = np.argsort(pv.mean(axis=1) @ view)
     coll = Poly3DCollection(pv[order], facecolors=cols[order], edgecolors="none")
     coll.set_zsort("average")
     ax.add_collection3d(coll)
